@@ -1,3 +1,9 @@
 node_modules
 .env
 dist
+# Parametres locaux de l'editeur
+.vscode/
+
+# Fichiers extraits des documents Word et archives en double (les .docx et .pptx d'origine restent suivis)
+docs/temp_*/
+docs/*.zip
