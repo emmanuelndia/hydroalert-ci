@@ -68,36 +68,36 @@ Lot 5 - Capteurs et reception des mesures
 - [ ] Creer les endpoints de gestion des capteurs necessaires au prototype.
 - [ ] Mettre en place l'authentification des capteurs.
 - [ ] Implementer la reception MQTT avec Mosquitto selon le contrat IoT.
-- [ ] Valider le schema, les unites, l'horodatage et les limites numeriques des mesures.
-- [ ] Enregistrer les mesures et l'heure de reception.
-- [ ] Mettre a jour la derniere communication et l'etat connu du capteur.
-- [ ] Eviter les doublons selon une regle d'idempotence definie.
-- [ ] Ajouter un simulateur de capteurs ou des donnees de test.
+- [x] Valider le schema, les unites, l'horodatage et les limites numeriques des mesures. (contrat provisoire, a aligner sur le contrat IoT)
+- [x] Enregistrer les mesures et l'heure de reception.
+- [x] Mettre a jour la derniere communication et l'etat connu du capteur.
+- [x] Eviter les doublons selon une regle d'idempotence definie. (provisoire : capteur + date de mesure)
+- [x] Ajouter un simulateur de capteurs ou des donnees de test. (pnpm simulate)
 - [ ] Detecter les capteurs silencieux selon un delai convenu.
 - [ ] Tester les mesures valides, invalides, non authentifiees et retransmises.
 
 
 Lot 6 - Zones, PostGIS et georeperage
-- [ ] Enregistrer et modifier les zones avec des geometries valides.
-- [ ] Stocker les positions des capteurs et des signalements en PostGIS.
-- [ ] Associer les capteurs et positions aux zones correspondantes.
-- [ ] Ajouter les requetes geographiques necessaires avec SQL brut si Prisma ne suffit pas.
-- [ ] Implementer les recherches de points dans une zone et de proximite en metres.
-- [ ] Exposer les zones et donnees cartographiques au format GeoJSON.
-- [ ] Tester les geomettries, coordonnees et cas limites avec des donnees fictives.
+- [x] Enregistrer et modifier les zones avec des geometries valides. (outil pnpm zone:import ; route protegee a ajouter apres le lot 4)
+- [ ] Stocker les positions des capteurs et des signalements en PostGIS. (capteurs : fait ; signalements : lot 9)
+- [x] Associer les capteurs et positions aux zones correspondantes. (rattachement a la plus petite zone active qui contient le capteur)
+- [x] Ajouter les requetes geographiques necessaires avec SQL brut si Prisma ne suffit pas.
+- [x] Implementer les recherches de points dans une zone et de proximite en metres. (GET /zones/locate, GET /sensors/nearby)
+- [x] Exposer les zones et donnees cartographiques au format GeoJSON. (GET /zones/geojson, GET /sensors/geojson)
+- [x] Tester les geomettries, coordonnees et cas limites avec des donnees fictives.
 
 
 Lot 7 - Predictions et regles d'alerte
-- [ ] Implementer les quatre niveaux et seuils fixes dans le PowerPoint.
+- [x] Implementer les quatre niveaux et seuils fixes dans le PowerPoint.
 - [ ] Creer l'interface backend permettant de solliciter le service IA externe.
 - [ ] Valider et enregistrer les reponses du service IA.
 - [ ] Definir un comportement explicite en cas de reponse invalide ou d'indisponibilite du service IA.
-- [ ] Ajouter une regle de risque simulee uniquement si elle est validee pour la demonstration.
-- [ ] Creer l'alerte lorsque les conditions retenues sont satisfaites.
+- [ ] Ajouter une regle de risque simulee uniquement si elle est validee pour la demonstration. (regle provisoire implementee et desactivee en production ; validation de l'equipe attendue)
+- [x] Creer l'alerte lorsque les conditions retenues sont satisfaites. (politique provisoire, voir Regles_Metier section 17)
 - [ ] Gerer les statuts : attente de validation, active, resolue ou annulee.
 - [ ] Permettre aux utilisateurs autorises de valider, modifier ou resoudre une alerte.
-- [ ] Eviter les alertes actives en double pour une meme zone et un meme niveau.
-- [ ] Conserver l'historique des predictions et alertes.
+- [x] Eviter les alertes actives en double pour une meme zone et un meme niveau.
+- [x] Conserver l'historique des predictions et alertes. (GET /predictions)
 - [ ] Tester les seuils, changements de niveau, validations et cas anti-doublon.
 
 

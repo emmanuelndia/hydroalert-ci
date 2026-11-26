@@ -1,9 +1,20 @@
+import { AlertLevel } from "@prisma/client";
 import { z } from "zod";
 
 /**
  * Configuration du backend, lue et validee une seule fois a partir des variables d'environnement.
  * Voir .env.example pour la description de chaque variable.
  */
+const alertLevelListSchema = z
+  .string()
+  .transform((value) =>
+    value
+      .split(",")
+      .map((level) => level.trim().toUpperCase())
+      .filter(Boolean),
+  )
+  .pipe(z.array(z.enum(AlertLevel)));
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -11,6 +22,9 @@ const envSchema = z
     HOST: z.string().min(1).default("0.0.0.0"),
     API_PUBLIC_URL: z.url({ protocol: /^https?$/ }).optional(),
     CORS_ORIGINS: z.string().trim().min(1).optional(),
+    RISK_EVALUATOR: z.enum(["rule", "none"]).optional(),
+    RULE_CRITICAL_WATER_LEVEL_CM: z.coerce.number().positive().max(1000).default(100),
+    ALERT_VALIDATION_LEVELS: alertLevelListSchema.optional(),
   })
   .refine((env) => env.NODE_ENV !== "production" || env.CORS_ORIGINS !== undefined, {
     message: "CORS_ORIGINS est obligatoire en production (liste d'origines separees par des virgules)",
@@ -25,6 +39,12 @@ export type AppConfig = {
   publicUrl: string;
   /** "*" pour toutes les origines, sinon la liste exacte des origines autorisees. */
   corsOrigins: "*" | string[];
+  /** Calcul de risque utilise apres chaque mesure : regle provisoire ou aucun (decision d'equipe en attente). */
+  riskEvaluator: "rule" | "none";
+  /** Niveau d'eau (cm) correspondant a un score de 100 dans la regle provisoire. */
+  ruleCriticalWaterLevelCm: number;
+  /** Niveaux d'alerte qui attendent une validation humaine avant diffusion. */
+  alertValidationLevels: AlertLevel[];
 };
 
 export class ConfigError extends Error {
@@ -64,5 +84,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     host: parsed.HOST,
     publicUrl: (parsed.API_PUBLIC_URL ?? `http://127.0.0.1:${parsed.PORT}`).replace(/\/+$/, ""),
     corsOrigins: parseOrigins(parsed.CORS_ORIGINS ?? "*"),
+    // La regle provisoire n'est pas activee en production tant que l'equipe ne l'a pas validee.
+    riskEvaluator: parsed.RISK_EVALUATOR ?? (parsed.NODE_ENV === "production" ? "none" : "rule"),
+    ruleCriticalWaterLevelCm: parsed.RULE_CRITICAL_WATER_LEVEL_CM,
+    alertValidationLevels: [...new Set(parsed.ALERT_VALIDATION_LEVELS ?? [])],
   };
 }

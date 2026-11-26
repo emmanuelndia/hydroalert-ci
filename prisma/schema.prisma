@@ -112,7 +112,8 @@ model Measurement {
 
   sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Restrict)
 
-  @@index([sensorId, measuredAt])
+  // Idempotence provisoire : une seule mesure par capteur et par date de mesure.
+  @@unique([sensorId, measuredAt])
   @@index([receivedAt])
   @@map("measurements")
 }

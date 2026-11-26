@@ -112,6 +112,7 @@ test("the OpenAPI document lists the consultation routes", async (t) => {
     "/sensors/{id}/measurements",
     "/alerts",
     "/alerts/{id}",
+    "/predictions",
   ]) {
     assert.ok(paths.includes(path), `missing ${path}`);
   }
@@ -127,7 +128,29 @@ test("loadConfig applies defaults when variables are absent or empty", () => {
     host: "0.0.0.0",
     publicUrl: "http://127.0.0.1:3000",
     corsOrigins: "*",
+    riskEvaluator: "rule",
+    ruleCriticalWaterLevelCm: 100,
+    alertValidationLevels: [],
   });
+});
+
+test("loadConfig keeps the provisional risk rule off in production unless enabled", () => {
+  const production = { NODE_ENV: "production", CORS_ORIGINS: "https://web.example.org" };
+  assert.equal(loadConfig(production).riskEvaluator, "none");
+  assert.equal(loadConfig({ ...production, RISK_EVALUATOR: "rule" }).riskEvaluator, "rule");
+  assert.equal(loadConfig({ RISK_EVALUATOR: "none" }).riskEvaluator, "none");
+  assert.throws(() => loadConfig({ RISK_EVALUATOR: "ia" }), ConfigError);
+});
+
+test("loadConfig parses alert validation levels and the critical water level", () => {
+  const config = loadConfig({
+    ALERT_VALIDATION_LEVELS: "danger, EVACUATION,DANGER",
+    RULE_CRITICAL_WATER_LEVEL_CM: "80",
+  });
+  assert.deepEqual(config.alertValidationLevels, ["DANGER", "EVACUATION"]);
+  assert.equal(config.ruleCriticalWaterLevelCm, 80);
+  assert.throws(() => loadConfig({ ALERT_VALIDATION_LEVELS: "NORMAL" }), ConfigError);
+  assert.throws(() => loadConfig({ RULE_CRITICAL_WATER_LEVEL_CM: "0" }), ConfigError);
 });
 
 test("loadConfig derives the public URL from PORT and trims trailing slashes", () => {

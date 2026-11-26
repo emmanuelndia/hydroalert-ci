@@ -214,3 +214,45 @@ Demande SOS :
 - Contrat et disponibilite du service IA ; comportement du backend si ce service est indisponible.
 - Politique de conservation des donnees personnelles et des photos de signalement.
 - Polygone exact de Riviera 9 Kilos et coordonnees des capteurs.
+
+
+17. Regles provisoires implementees (26/11/2026, a valider par l'equipe)
+
+Ces regles permettent de tester la chaine mesure -> prediction -> alerte avant les decisions de l'equipe.
+Elles sont regroupees dans le code et configurables ; elles seront ajustees une fois les decisions prises.
+
+Mesures (src/services/ingestion.ts) :
+- Contrat de mesure provisoire : sensorCode, measuredAt (date ISO avec fuseau), waterLevelCm, rainMm, flowRate, batteryPct.
+  A remplacer par le contrat MQTT definitif du responsable IoT.
+- Limites provisoires : niveau d'eau 0 a 1000 cm, pluie 0 a 500 mm, debit positif, batterie 0 a 100,
+  date de mesure au plus 5 minutes apres l'heure de reception.
+- Un capteur NIVEAU_EAU doit fournir waterLevelCm, un capteur PLUIE rainMm, un capteur DEBIT flowRate.
+- Capteur EN_MAINTENANCE ou DESACTIVE : mesure refusee. Capteur HORS_LIGNE : mesure acceptee et capteur remis ACTIF.
+- Idempotence : une seule mesure par capteur et par date de mesure (contrainte unique en base).
+  Une retransmission identique est signalee comme doublon, sans erreur ni nouvel enregistrement.
+- Une mesure refusee ne modifie ni la derniere communication ni l'etat du capteur.
+
+Calcul du risque (src/services/risk-evaluation.ts) :
+- Regle provisoire, origine REGLE, version regle-provisoire-v1.
+- Donnees : derniere mesure de niveau d'eau de chaque capteur ACTIF de la zone sur les 60 dernieres minutes,
+  et cumul de pluie sur la meme periode (cumul le plus eleve si plusieurs pluviometres).
+- Score = min(100, arrondi(niveau d'eau max / niveau critique x 100) + min(15, pluie cumulee en mm)).
+- Niveau critique par defaut : 100 cm (RULE_CRITICAL_WATER_LEVEL_CM).
+- Sans donnee exploitable, aucune prediction n'est creee.
+- La regle est active par defaut en developpement et desactivee en production (RISK_EVALUATOR).
+- Elle sera remplacee ou completee par le service IA quand son contrat sera defini.
+
+Alertes (src/services/alerting.ts) :
+- Une seule alerte ouverte (EN_ATTENTE_VALIDATION ou ACTIVE) par zone.
+- Prediction NORMAL sans alerte ouverte : rien.
+- Niveau d'alerte sans alerte ouverte : creation d'une alerte (numero ALR-AAAAMMJJ-XXXXXX, titre et message selon le niveau).
+- Meme niveau que l'alerte ouverte : rien (anti-doublon).
+- Niveau superieur : l'alerte ouverte est escaladee (niveau, prediction, titre et message mis a jour) ; son statut est conserve.
+- Niveau inferieur ou NORMAL : rien ; la desescalade et la resolution restent des actions humaines (lot 4).
+- Les niveaux listes dans ALERT_VALIDATION_LEVELS sont crees EN_ATTENTE_VALIDATION ; les autres sont publies ACTIVE.
+  Par defaut, aucun niveau n'attend de validation.
+
+Decisions attendues de l'equipe :
+- Formule de risque et niveau critique, ou remplacement par le service IA.
+- Niveaux necessitant une validation avant diffusion.
+- Politique d'escalade et de desescalade des alertes.
