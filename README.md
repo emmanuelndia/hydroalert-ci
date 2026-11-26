@@ -12,7 +12,7 @@ Ils utilisent cette API.
 | API en ligne | https://hydroalert-api.onrender.com |
 | Documentation interactive | https://hydroalert-api.onrender.com/docs |
 | Documentation Word de l'API | [`docs/API_HydrOAlerte_CI_v0.3.1.docx`](docs/) (dernière version) |
-| Branche de travail | `backend` |
+| Branches | `backend` pour le développement, `main` pour la version déployée |
 
 > **Note.** Les données actuelles sont **fictives** : polygone approximatif de la zone, capteurs simulés.
 > L'API gratuite se met en veille après 15 minutes sans requête ; la première requête suivante prend environ une minute.
@@ -282,7 +282,8 @@ docker-compose.yml     PostgreSQL/PostGIS local
 
 L'API est hébergée sur **Render**, offre gratuite, et la base sur **Neon** (PostgreSQL + PostGIS, offre gratuite).
 
-- Chaque `git push` sur la branche `backend` **redéploie automatiquement** l'API.
+- Render déploie la branche **`main`**. On développe sur `backend`, puis on fusionne dans `main` (pull request sur GitHub, ou `git merge backend` sur `main` suivi d'un `git push origin main`).
+- Chaque `git push` sur `main` **redéploie automatiquement** l'API.
 - Les migrations en attente sont **appliquées au démarrage** (`npm run start:render`).
 - Les secrets (`DATABASE_URL`, etc.) sont saisis dans le tableau de bord Render, **jamais** dans le dépôt.
 

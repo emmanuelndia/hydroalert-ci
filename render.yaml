@@ -7,7 +7,8 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    branch: backend
+    # Render deploie la branche main ; le developpement se fait sur backend puis est fusionne dans main.
+    branch: main
     autoDeploy: true
     buildCommand: npm install -g pnpm@11.15.1 && pnpm install --frozen-lockfile --prod=false && pnpm build
     # Applique les migrations Prisma en attente, puis lance le serveur compile.
