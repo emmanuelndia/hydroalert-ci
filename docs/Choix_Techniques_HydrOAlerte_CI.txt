@@ -1,0 +1,335 @@
+Choix techniques - HydrO'Alerte CI
+
+Document de reference pour le perimetre back-end de HydrO'Alerte CI, base sur les documents du projet et l'etat actuel du depot. Les choix concernant les autres modules ne sont mentionnes que comme dependances ou contrats d'integration. Les details encore ouverts sont identifies explicitement.
+
+
+1. Stack
+
+Backend :
+- Node.js
+- Fastify
+- TypeScript
+- dotenv pour charger les variables locales depuis .env
+- API REST comme interface avec les applications web et mobile ainsi qu'avec le service IA
+- Zod pour valider les donnees recues par l'API
+- Plugins Fastify pour isoler les fonctions transversales : base de donnees, authentification, documentation et MQTT
+
+Base de donnees :
+- PostgreSQL
+- Extension PostGIS pour les zones, les positions et les calculs geographiques
+
+ORM / migrations :
+- Prisma pour le schema, les migrations et les operations courantes
+- SQL brut avec Prisma pour les fonctions PostGIS non prises en charge directement
+
+Package manager :
+- pnpm
+
+Communication avec les capteurs :
+- MQTT avec Mosquitto est le transport de reference retenu dans le PowerPoint.
+- Les topics, identifiants, payload, unites et frequences restent a definir dans le contrat IoT.
+- Une entree HTTP ne sera ajoutee qu'en cas de besoin explicite de repli ou de demonstration.
+
+Temps reel :
+- WebSocket avec Fastify pour publier les nouvelles alertes et mesures aux clients connectes
+- SSE ou API avec rafraichissement periodique comme solution de repli
+- Le choix final depend des besoins d'integration communiques par les responsables web et mobile
+
+Notifications :
+- Firebase Admin SDK / FCM cote serveur pour envoyer les notifications push
+- SMS simule pour le prototype
+- Fournisseur de SMS reel a choisir uniquement si necessaire pour la demonstration
+
+Documentation et tests :
+- Swagger / OpenAPI pour documenter l'API
+- Postman ou Insomnia pour tester les endpoints
+- Tests automatises des routes, des regles d'alerte et du georeperage
+
+Deploiement :
+- Retenu pour le prototype : base PostgreSQL/PostGIS chez Neon (gratuite, sans expiration) et API chez Render (service web gratuit, deploye depuis GitHub).
+- Configuration Render dans render.yaml ; build par tsc vers dist/ (pnpm build) ; migrations appliquees au demarrage (npm run start:render).
+- Guide pas a pas : docs/Deploiement_HydrOAlerte_CI.txt.
+- Limites : mise en veille de l'API apres 15 minutes d'inactivite (reveil en environ 1 minute), 1 Go de stockage Neon.
+- Le broker MQTT (lot 5) devra etre heberge a part ; son hebergement reste a choisir.
+- En local, Docker lance PostgreSQL/PostGIS ; il peut aussi lancer Mosquitto plus tard.
+
+Perimetre d'integration :
+- Les applications web et mobile sont developpees par les autres responsables du projet ; le backend leur fournit une API documentee.
+- Le module IA est developpe hors du perimetre backend ; le backend consomme son interface lorsqu'elle sera definie.
+- Le backend prend en charge la reception MQTT, la validation et le stockage des donnees capteurs.
+
+
+2. Structure backend proposee
+
+hydroalert-ci/
+- src/
+  - plugins/
+  - routes/
+  - services/
+  - schemas/
+  - types/
+  - server.ts
+- prisma/
+  - schema.prisma
+  - migrations/
+- tests/
+- docs/
+
+Lecture :
+- src/plugins : plugins Fastify pour Prisma, authentification, Swagger et MQTT ou WebSocket.
+- src/routes : endpoints de sante, authentification, capteurs, mesures, zones, predictions, alertes et signalements.
+- src/services : regles metier et integrations, par exemple georeperage, notifications et client du service IA.
+- src/schemas : schemas Zod pour valider les parametres et corps des requetes.
+- src/types : types TypeScript propres au backend et aux contrats d'API.
+- prisma : schema de donnees et migrations Prisma.
+- tests : tests des routes et des regles metier.
+- docs : contrat d'API, decisions backend, guides et documents du projet.
+
+Etat actuel :
+- Le serveur Fastify est testable via buildApp et expose /health/live ainsi que /health, qui verifie aussi l'acces a PostgreSQL.
+- Prisma est installe ; la migration initiale (zones, capteurs, mesures, predictions, alertes) est appliquee et le schema Prisma est aligne sur la base, y compris les index GIST.
+- Dossiers en place : src/plugins (prisma, errors, swagger), src/routes, src/services, src/schemas, src/lib, tests/integration, scripts. Le dossier src/types sera ajoute au besoin.
+- Validation et serialisation par Zod via fastify-type-provider-zod ; documentation OpenAPI generee a partir des memes schemas, consultable sur /docs (JSON : /docs/json).
+- Configuration centralisee dans src/config.ts : NODE_ENV, PORT, HOST, API_PUBLIC_URL et CORS_ORIGINS sont validees au demarrage, et une valeur invalide arrete le serveur sans afficher son contenu.
+- API_PUBLIC_URL alimente la liste des serveurs OpenAPI (Swagger « Try it out ») et le document Word genere par pnpm docs:api.
+- CORS (@fastify/cors) : origines configurables ; « * » en developpement ; liste explicite obligatoire en production. A resserrer avec les clients au lot 11.
+- Format d'erreur unique : { "error": { "code", "message", "details"? } } avec les codes VALIDATION_ERROR (400), NOT_FOUND (404) et INTERNAL_ERROR (500).
+- Endpoints de consultation : GET /zones, /zones/:id, /sensors, /sensors/:id, /sensors/:id/measurements, /alerts, /alerts/:id. Listes paginees (page, pageSize <= 100) avec filtres.
+- Les geometries PostGIS sont lues en SQL brut (ST_AsGeoJSON, ST_X/ST_Y) ; l'empreinte de cle des capteurs n'est jamais renvoyee.
+- Les variables de connexion locales sont documentees dans .env.example ; aucune valeur d'acces reelle n'y figure. L'hote 127.0.0.1 est utilise plutot que localhost, car le port Docker n'est publie qu'en IPv4.
+- Commandes : pnpm db:migrate:deploy / db:migrate:dev, pnpm db:seed (donnees fictives idempotentes), pnpm test (sans base), pnpm test:integration (base TEST_DATABASE_URL distincte, migree et remplie automatiquement).
+- Cette proposition ne comprend pas les sources des applications web, mobile ou du service IA.
+
+
+3. Tables principales proposees
+
+- users
+- zones
+- sensors
+- measurements
+- predictions
+- alerts
+- device_tokens
+- notifications
+- reports
+- sos_requests
+- shelters
+- audit_logs
+
+Tables du coeur du prototype :
+- zones : quartiers ou secteurs suivis et leur geometrie.
+- sensors : capteurs installes ou simules et leur etat.
+- measurements : mesures horodatees transmises par les capteurs.
+- predictions : resultats du calcul de risque par zone.
+- alerts : alertes publiees ou a valider par les autorites.
+- users et device_tokens : utilisateurs et appareils pouvant recevoir des notifications.
+- notifications : historique des tentatives et resultats de diffusion.
+
+Tables supplementaires :
+- reports : signalements citoyens comme route inondee ou caniveau bouche.
+- sos_requests : demandes d'urgence envoyees depuis l'application.
+- shelters : refuges et informations de capacite.
+- audit_logs : historique des actions sensibles effectuees dans le systeme.
+
+
+4. Proposition de champs par table
+
+users :
+- id : UUID, cle primaire.
+- full_name : texte, nom affiche, nullable si inscription simplifiee.
+- phone : texte, numero de telephone, unique si utilise pour l'inscription.
+- email : texte, nullable et unique si l'email est utilise.
+- password_hash : texte, nullable si authentification par code SMS uniquement.
+- role : enum ou texte controle, par exemple citizen, agent, supervisor, admin.
+- preferred_language : texte, par exemple fr.
+- is_active : booleen, compte actif ou desactive.
+- created_at : horodatage.
+- updated_at : horodatage.
+
+zones :
+- id : UUID, cle primaire.
+- name : texte, nom du quartier ou secteur.
+- description : texte, nullable.
+- geom : geometrie PostGIS de type POLYGON ou MULTIPOLYGON, en SRID 4326.
+- is_active : booleen.
+- created_at : horodatage.
+- updated_at : horodatage.
+
+sensors :
+- id : UUID, cle primaire.
+- code : texte, identifiant lisible du capteur, unique.
+- name : texte, nullable.
+- zone_id : UUID, cle etrangere vers zones, nullable si le capteur n'est pas encore rattache.
+- geom : geometrie PostGIS de type POINT, en SRID 4326.
+- latitude : nombre decimal, optionnel si la geometrie est la reference unique.
+- longitude : nombre decimal, optionnel si la geometrie est la reference unique.
+- access_key_hash : texte, empreinte du secret d'authentification, jamais le secret en clair.
+- status : enum ou texte controle, par exemple active, offline, maintenance.
+- battery_pct : petit entier de 0 a 100, derniere valeur connue, nullable.
+- last_seen_at : horodatage de la derniere communication, nullable.
+- created_at : horodatage.
+- updated_at : horodatage.
+
+measurements :
+- id : UUID, cle primaire.
+- sensor_id : UUID, cle etrangere vers sensors.
+- measured_at : horodatage de la mesure envoyee par le capteur.
+- water_level_cm : nombre decimal, niveau d'eau en centimetres.
+- rain_mm : nombre decimal, nullable si la mesure de pluie est disponible.
+- flow_rate : nombre decimal, nullable si la mesure de debit est disponible.
+- battery_pct : petit entier de 0 a 100, nullable.
+- received_at : horodatage de reception par le serveur.
+- raw_payload : JSON, nullable, message d'origine utile au diagnostic.
+- Contrainte proposee : index sur (sensor_id, measured_at) pour les historiques.
+
+predictions :
+- id : UUID, cle primaire.
+- zone_id : UUID, cle etrangere vers zones.
+- risk_score : petit entier de 0 a 100.
+- risk_level : enum ou texte controle : NORMAL, VIGILANCE, DANGER, EVACUATION.
+- probability : nombre decimal entre 0 et 1, nullable si le modele ne la fournit pas.
+- horizon_hours : nombre decimal, nullable si l'horizon n'est pas defini.
+- model_version : texte, nullable pour une prediction par regles.
+- input_summary : JSON, resume des donnees utilisees.
+- predicted_at : horodatage du calcul.
+- created_at : horodatage d'enregistrement.
+
+alerts :
+- id : UUID, cle primaire.
+- zone_id : UUID, cle etrangere vers zones.
+- prediction_id : UUID, cle etrangere vers predictions, nullable pour une alerte creee manuellement.
+- created_by_user_id : UUID, cle etrangere vers users, nullable pour une alerte automatique.
+- level : enum ou texte controle, par exemple vigilance, danger, evacuation.
+- title : texte.
+- message : texte.
+- status : enum ou texte controle, par exemple pending, active, resolved, cancelled.
+- requires_validation : booleen.
+- validated_by_user_id : UUID, cle etrangere vers users, nullable.
+- validated_at : horodatage, nullable.
+- starts_at : horodatage.
+- ends_at : horodatage, nullable.
+- created_at : horodatage.
+- updated_at : horodatage.
+
+device_tokens :
+- id : UUID, cle primaire.
+- user_id : UUID, cle etrangere vers users.
+- token : texte, jeton Firebase, unique.
+- platform : texte controle, par exemple android ou ios.
+- is_active : booleen.
+- last_seen_at : horodatage, nullable.
+- created_at : horodatage.
+
+notifications :
+- id : UUID, cle primaire.
+- user_id : UUID, cle etrangere vers users, nullable pour un envoi par zone ou topic.
+- alert_id : UUID, cle etrangere vers alerts, nullable pour une notification non liee a une alerte.
+- channel : enum ou texte controle, par exemple push, sms, voice, console.
+- destination : texte, nullable, numero ou identifiant du destinataire.
+- status : enum ou texte controle, par exemple pending, sent, failed, simulated.
+- provider_reference : texte, nullable, identifiant renvoye par le fournisseur.
+- error_message : texte, nullable.
+- sent_at : horodatage, nullable.
+- created_at : horodatage.
+
+reports :
+- id : UUID, cle primaire.
+- user_id : UUID, cle etrangere vers users, nullable pour un signalement anonyme si autorise.
+- zone_id : UUID, cle etrangere vers zones, nullable si la position n'est pas associee a une zone.
+- type : enum ou texte controle, par exemple flooded_road, blocked_drain, landslide, other.
+- description : texte.
+- geom : geometrie PostGIS de type POINT, en SRID 4326.
+- photo_url : texte, nullable.
+- status : enum ou texte controle, par exemple received, in_progress, resolved, rejected.
+- assigned_to_user_id : UUID, cle etrangere vers users, nullable.
+- created_at : horodatage.
+- updated_at : horodatage.
+
+sos_requests :
+- id : UUID, cle primaire.
+- user_id : UUID, cle etrangere vers users.
+- geom : geometrie PostGIS de type POINT, en SRID 4326.
+- description : texte, nullable.
+- status : enum ou texte controle, par exemple received, in_progress, resolved, cancelled.
+- assigned_to_user_id : UUID, cle etrangere vers users, nullable.
+- created_at : horodatage.
+- updated_at : horodatage.
+
+shelters :
+- id : UUID, cle primaire.
+- name : texte.
+- address : texte, nullable.
+- geom : geometrie PostGIS de type POINT, en SRID 4326.
+- capacity : entier, nullable.
+- current_occupancy : entier, nullable.
+- status : enum ou texte controle, par exemple open, closed, full.
+- created_at : horodatage.
+- updated_at : horodatage.
+
+audit_logs :
+- id : UUID, cle primaire.
+- user_id : UUID, cle etrangere vers users, nullable pour une action systeme.
+- action : texte, type d'action effectuee.
+- entity_type : texte, type d'objet concerne.
+- entity_id : UUID ou texte, identifiant de l'objet concerne.
+- details : JSON, details utiles sans y stocker de secret.
+- ip_address : texte, nullable.
+- created_at : horodatage.
+
+
+5. Relations principales
+
+- Une zone contient plusieurs capteurs.
+- Un capteur envoie plusieurs mesures.
+- Une zone peut avoir plusieurs predictions et plusieurs alertes.
+- Une prediction concerne une zone et peut etre a l'origine d'une alerte.
+- Un utilisateur peut posseder plusieurs jetons d'appareil et recevoir plusieurs notifications.
+- Une alerte peut declencher plusieurs notifications.
+- Un utilisateur peut creer plusieurs signalements et demandes SOS.
+- Un utilisateur autorise peut etre assigne au traitement d'un signalement ou d'une demande SOS.
+- Les actions importantes des utilisateurs et du systeme peuvent etre enregistrees dans audit_logs.
+
+
+6. Ordre de construction propose
+
+- Confirmer les choix de stack, la structure et le contrat d'interface.
+- Creer le schema de base de donnees pour zones, capteurs, mesures, predictions et alertes.
+- Ajouter les migrations Prisma et activer PostGIS.
+- Implementer l'API de sante, la connexion a la base, la validation et la documentation Swagger.
+- Ajouter l'enregistrement des capteurs et la reception des mesures avec un simulateur.
+- Creer les regles de risque provisoires et la gestion des alertes sans doublons.
+- Exposer les zones et alertes en GeoJSON pour la carte.
+- Ajouter les comptes, les roles et les notifications push.
+- Integrer progressivement signalements, SOS, le transport MQTT retenu et le service IA selon le temps disponible.
+- Tester le parcours complet, de la mesure a l'affichage et a la notification.
+
+
+7. Choix retenus et details a finaliser
+
+- Niveaux de risque retenus :
+	* NORMAL : 0 a 39 ; VIGILANCE : 40 a 64 ; DANGER : 65 a 84 ; EVACUATION : 85 a 100.
+	* Le niveau est la reference metier ; pour les trois couleurs de presentation : NORMAL vert, VIGILANCE orange, DANGER rouge et EVACUATION rouge.
+- Validation :
+	* Preciser quels niveaux sont publies automatiquement et lesquels necessitent la validation d'un superviseur (ou d'un agent explicitement autorise).
+- Authentification :
+	* Confirmer les roles definitifs et le parcours de connexion, notamment mot de passe ou code SMS.
+- Capteurs :
+	* MQTT/Mosquitto est retenu comme transport de reference ; finaliser topics, format, unites, frequence et champs avec le responsable IoT.
+- Geographie :
+	* Riviera 9 Kilos est la zone pilote retenue ; definir son polygone exact, le systeme de coordonnees et la source des donnees geographiques.
+- Temps reel et deploiement :
+	* Confirmer WebSocket ou solution plus simple, ainsi que l'hebergement accessible pendant la demonstration.
+- Perimetre :
+	* Confirmer quelles fonctions seront implementees et lesquelles seront simulees pour la soutenance.
+
+
+8. Recommandations de conception
+
+- Utiliser des UUID comme identifiants internes et un code lisible distinct pour les capteurs.
+- Conserver les horodatages en UTC et convertir l'affichage selon le besoin des utilisateurs.
+- Utiliser PostGIS comme source de reference pour les geometries, avec des index spatiaux sur les colonnes geom.
+- Eviter de stocker les secrets en clair : conserver une empreinte de la cle capteur et les secrets serveur dans des variables d'environnement.
+- Limiter les donnees personnelles conservees et controler l'acces aux positions, signalements et demandes SOS.
+- Utiliser des contraintes et des index sur les cles etrangeres, les statuts et les horodatages consultes frequemment.
+- Definir les champs et valeurs enum definitifs dans le contrat d'interface avant de les partager aux autres modules.
+- Demarrer avec les tables indispensables ; les refuges, l'audit detaille et certaines fonctions de gestion peuvent etre ajoutes ensuite.

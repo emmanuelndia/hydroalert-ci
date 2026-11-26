@@ -1,0 +1,244 @@
+HydrO'Alerte CI - Synthese du projet
+
+Synthese redigee a partir du document de reference, des besoins et etapes du back-end, du diaporama de mi-parcours et de l'etat actuel du depot.
+
+Perimetre :
+- Le projet global comprend l'IoT, l'intelligence artificielle, une application mobile, un tableau de bord web et un backend.
+- Le perimetre de travail de Levi est le backend : API, base de donnees, regles metier, securite, reception des donnees et integration des services externes.
+- Le developpement de l'application mobile, du site web, du materiel IoT et du modele IA est porte par les autres responsables.
+- Ces modules sont evoques ici uniquement pour preciser les interfaces et dependances que le backend doit prendre en charge ; leur implementation n'est pas incluse dans son perimetre.
+
+
+1. Presentation du projet
+
+- HydrO'Alerte CI est un projet APP3 pour l'annee academique 2026-2027.
+- Le sujet porte sur les technologies numeriques intelligentes au service de la prevention et de la gestion des risques d'inondation en Cote d'Ivoire.
+- L'objectif general est de concevoir un prototype de plateforme de surveillance, de prediction et d'alerte des inondations, teste sur une zone pilote d'Abidjan.
+- La solution cherche a informer les habitants plus rapidement et plus localement, et a faciliter l'action des autorites et des secours.
+- La zone pilote retenue dans le PowerPoint de mi-parcours est Riviera 9 Kilos, a Cocody.
+- Le polygone exact de la zone et les coordonnees des capteurs restent a renseigner pour le backend.
+
+
+2. Contexte et problematique
+
+- Les documents de reference decrivent les inondations comme un risque recurrent pendant la saison des pluies, avec des consequences humaines, materielles et economiques.
+- Les causes relevees comprennent :
+	* Les pluies intenses concentrees sur quelques heures
+	* L'urbanisation dans les bas-fonds, les talwegs et les zones exposees
+	* Les caniveaux obstrues et l'insuffisance du drainage
+- Les consequences comprennent les pertes en vies humaines, les familles sinistrees, les routes coupees, les degats materiels et les risques sanitaires.
+- Les limites identifiees sont :
+	* Des alertes parfois trop generales pour identifier le quartier precisement menace
+	* Peu de points surveilles en temps reel
+	* Des informations qui n'atteignent pas toujours les personnes sans smartphone
+	* Des automobilistes qui ne sont pas avertis assez tot des voies inondees
+	* Une coordination et une remontee des informations du terrain a ameliorer
+- La problematique du projet est de savoir comment anticiper les inondations et alerter a temps les populations exposees, tout en facilitant la coordination des secours et l'action des autorites.
+
+
+3. Solution proposee et perimetre backend
+
+- La plateforme globale croise plusieurs sources d'information :
+	* Les mesures des capteurs IoT sur le terrain
+	* Les previsions meteorologiques et, a terme, les donnees satellitaires
+	* Les signalements des citoyens
+- Le backend central collecte et stocke les donnees, applique ou sollicite le calcul de risque convenu, gere les alertes et expose les informations aux autres modules.
+- Le module IA est externe au perimetre backend ; le backend l'appellera via une interface a definir avec son responsable.
+- La carte, l'application mobile et le tableau de bord sont developpes par les autres responsables ; le backend leur fournit des endpoints documentes.
+- Les notifications, SMS ou messages vocaux sont des canaux de diffusion de la plateforme ; le backend peut integrer leur fournisseur, mais la conception des applications et des interfaces utilisateur est hors de son perimetre.
+- Le perimetre backend comprend notamment l'API REST, la base de donnees, la validation des donnees, les acces et roles, les regles d'alerte, le georeperage et les integrations capteurs/IA/notifications.
+
+
+4. Parcours d'une alerte
+
+- Un capteur mesure le niveau d'eau et transmet sa mesure au serveur, notamment par MQTT.
+- Le back-end enregistre la mesure et peut transmettre les donnees utiles au module IA.
+- Le module IA renvoie un score de risque et un niveau d'alerte.
+- Une alerte est creee lorsque les seuils convenus sont atteints ; selon le niveau, elle peut necessiter une validation par un agent.
+- Le back-end diffuse ensuite l'alerte par les canaux integres et expose les mises a jour a la carte et aux applications.
+- Pour la demonstration, un capteur simule ou reel peut faire monter le niveau d'eau ; la contribution backend est de recevoir la mesure, la traiter, enregistrer le resultat et rendre l'alerte disponible aux clients.
+
+
+5. Fonctionnalites prevues
+
+- Applications et equipements hors perimetre backend :
+	* L'application mobile permet le choix des zones, la consultation des alertes, le signalement, le SOS et le mode conduite.
+	* Le tableau de bord web affiche les capteurs, zones, alertes et signalements et permet aux agents de traiter certaines actions.
+	* Les capteurs et le panneau lumineux sont construits et pilotes par le module IoT.
+- Services backend a fournir pour ces modules :
+	* Endpoints pour enregistrer et consulter les zones suivies par un utilisateur, si cette fonction est retenue.
+	* Endpoints pour consulter les zones, mesures, predictions et alertes.
+	* Endpoints pour recevoir les mesures, signalements et demandes SOS.
+	* Endpoints proteges pour valider ou traiter les alertes et signalements selon les roles.
+	* Stockage des utilisateurs, roles, capteurs, appareils de notification et refuges si retenus.
+	* Envoi des notifications et publication des mises a jour aux clients connectes, selon les integrations retenues.
+
+
+6. Priorite du prototype
+
+- Fonctionnalites indispensables selon le document de reference :
+	* Mesure du niveau d'eau et transmission au back-end
+	* Calcul du risque et declenchement d'une alerte
+	* Endpoints d'alerte et integration des notifications pour l'application mobile
+	* Donnees de carte exposees par le backend pour le site web
+	* Endpoints backend pour recevoir les signalements citoyens et demandes SOS
+- Les interfaces mobiles et web correspondantes sont implementees par leurs responsables respectifs ; le backend fournit les donnees et services necessaires.
+- Fonctionnalites a ajouter si le temps le permet :
+	* SMS, mode conduite et panneau lumineux
+	* Refuges, itineraires et statistiques
+- Elements presentes comme evolutions futures :
+	* Deploiement d'un reseau complet de capteurs autonomes
+	* Modele d'IA entraine sur un grand volume de donnees reelles
+	* Messages vocaux en langues locales, chatbot et capteurs de glissement de terrain
+
+
+7. Architecture technique envisagee
+
+- Back-end :
+	* Node.js, Fastify et TypeScript selon les besoins back-end
+	* API REST pour les applications mobile et web, et pour les echanges avec le module IA
+- Base de donnees :
+	* PostgreSQL avec l'extension PostGIS pour les zones et les positions geographiques
+	* Prisma pour le schema, l'acces aux donnees et les migrations
+	* Requetes SQL brutes a prevoir pour certaines fonctions geographiques PostGIS
+- Communication :
+	* MQTT avec Mosquitto pour les capteurs, retenu comme transport de reference
+	* WebSocket ou SSE pour les mises a jour en temps reel ; le rafraichissement regulier reste une solution de repli
+- Intelligence artificielle (dependance externe) :
+	* Le service IA peut etre expose en Python, par exemple avec FastAPI, par son responsable.
+	* Le backend consomme son interface quand le contrat est defini.
+	* En attendant, le backend peut utiliser une regle provisoire de demonstration si cette responsabilite est validee par l'equipe.
+- Notifications :
+	* Firebase Cloud Messaging pour les notifications mobiles
+	* SMS simules pour la demonstration ; une API SMS locale pourrait etre ajoutee ulterieurement
+- Outils mentionnes :
+	* pnpm, Git et GitHub
+	* Swagger/OpenAPI pour documenter l'API
+	* Postman ou Insomnia pour tester les endpoints
+	* Docker est une option pour regrouper l'API, la base et le broker
+
+
+8. Donnees et contrat d'interface
+
+- Les documents proposent de faire passer les echanges entre les modules par le back-end central.
+- Exemple de mesure de capteur propose :
+	* Identifiant du capteur
+	* Horodatage
+	* Niveau d'eau en centimetres
+	* Pourcentage de batterie si disponible
+- Les besoins back-end proposent egalement latitude et longitude pour les mesures.
+- Exemple de resultat d'IA propose : 
+	* Identifiant de zone
+	* Niveau ou score de risque
+	* Probabilite
+	* Horizon de prediction en heures
+	* Horodatage
+- Exemple d'alerte propose :
+	* Zone concernee, niveau et score de risque
+	* Message destine aux utilisateurs
+	* Canaux de diffusion retenus
+- Ces formats sont des propositions de depart et doivent etre valides avec les responsables IoT et IA avant l'integration.
+
+
+9. Niveaux de risque retenus
+
+- Le PowerPoint fixe quatre classes de score :
+	* Normal : 0 a 39
+	* Vigilance : 40 a 64
+	* Danger : 65 a 84
+	* Evacuation : 85 a 100
+- Ces quatre niveaux sont la reference backend ; les couleurs sont un attribut d'affichage et ne remplacent pas le niveau.
+- Pour conserver les trois couleurs mentionnees dans les besoins backend, la correspondance de presentation proposee est : Normal = vert, Vigilance = orange, Danger = rouge, Evacuation = rouge.
+- Les messages et les actions de diffusion doivent respecter le niveau et les regles de validation retenues.
+
+
+10. Repartition des roles
+
+- Soro : application mobile et appui a l'intelligence artificielle.
+- Daniel : IoT, capteurs et panneau lumineux.
+- Levi : back-end, base de donnees et liaison entre les modules.
+- Ange : intelligence artificielle, en coordination avec Soro.
+- Arielle : application web et cartographie.
+- Les recherches, l'integration, la documentation et la preparation de la soutenance sont des taches partagees par le groupe.
+- Pour Levi, « liaison entre les modules » signifie definir et maintenir les contrats API et les integrations cote serveur ; cela n'inclut pas le developpement des autres applications ou du modele IA.
+
+
+11. Contrats d'integration et details a finaliser
+
+- Interfaces externes necessaires au backend :
+	* Avec Daniel : MQTT/Mosquitto est le transport de reference ; finaliser les topics, le schema du message, la frequence, les unites, l'identifiant et l'authentification du capteur.
+	* Avec Ange et Soro : mode d'appel du service IA, donnees d'entree, format de reponse et gestion des erreurs.
+	* Avec Soro : jeton Firebase, identifiants des appareils et contenu de notification attendu.
+	* Avec Arielle et Soro : donnees et endpoints attendus pour la carte, le tableau de bord et l'application mobile.
+- Details backend a finaliser avec l'equipe :
+	* Niveaux d'alerte : seuils fixes dans le PowerPoint ; preciser quels niveaux exigent une validation avant diffusion.
+	* Roles et actions autorisees dans l'API.
+	* Endpoints, format des reponses et mode de mise a jour temps reel a fournir aux clients.
+	* Geometrie exacte et donnees geographiques de Riviera 9 Kilos.
+	* Hebergement du serveur et accessibilite pendant la demonstration.
+- Les ecrans mobiles et web, le materiel IoT et l'implementation du modele IA ne sont pas des taches backend ; seuls leurs contrats d'integration sont a convenir avec les responsables concernes.
+
+
+12. Securite et donnees personnelles
+
+- Les besoins back-end proposent des comptes avec mots de passe haches, des jetons JWT et des roles.
+- Les roles envisages comprennent citoyen, agent ou autorite, superviseur et administrateur ; leur liste doit etre harmonisee.
+- Les routes privees doivent etre protegees selon le role.
+- Les identifiants des capteurs doivent etre authentifies avant l'enregistrement de mesures.
+- Les cles et mots de passe doivent etre stockes dans un fichier .env non versionne.
+- Les donnees de position et les autres donnees personnelles doivent etre traitees avec precaution et selon les obligations applicables en Cote d'Ivoire.
+
+
+13. Etat actuel du depot
+
+- Le depot contient un serveur Fastify testable via buildApp, avec GET /health/live et GET /health (controle de disponibilite PostgreSQL).
+- Prisma est installe et le schema initial couvre zones, capteurs, mesures, predictions et alertes.
+- Une migration PostgreSQL active PostGIS, cree les tables et ajoute les index spatiaux ainsi que les contraintes de domaine.
+- La migration est appliquee le 25/11/2026 sur PostgreSQL 16 / PostGIS 3.4 (Docker) ; le schema Prisma est aligne sur la base, sans ecart.
+- Un jeu de donnees fictives (pnpm db:seed) cree la zone Riviera 9 Kilos avec un polygone approximatif, 3 capteurs, 72 mesures, 2 predictions et 1 alerte.
+- L'API de consultation est disponible : zones, capteurs, mesures et alertes, avec validation Zod, pagination, filtres, format d'erreur unique et documentation Swagger sur /docs.
+- Tests unitaires (pnpm test) et d'integration sur une base de test dediee (pnpm test:integration) ; tous passent, ainsi que le controle TypeScript.
+- L'authentification, la reception MQTT, les integrations IA, les regles d'alerte et les notifications restent a implementer.
+
+
+14. Etapes de realisation proposees dans les documents
+
+- Preparer l'environnement backend : Node.js, pnpm, PostgreSQL/PostGIS, Git et variables d'environnement.
+- Definir le contrat API et les tables backend pour utilisateurs, capteurs, mesures, zones, predictions, alertes et notifications.
+- Creer l'API Fastify, sa connexion a la base, la validation, la documentation et la gestion des erreurs.
+- Ajouter les comptes, les roles et les protections des routes selon le besoin du prototype.
+- Recevoir, valider et stocker les mesures ; utiliser un simulateur en attendant ou en complement des capteurs.
+- Implementer le georeperage et exposer les zones et alertes en GeoJSON pour les clients web/mobile.
+- Creer les regles de risque provisoires ou consommer le service IA externe selon le contrat convenu.
+- Integrer les notifications et le temps reel cote serveur ; les interfaces clientes restent hors du perimetre backend.
+- Documenter et tester les endpoints, les regles d'alerte, le georeperage et les integrations.
+
+
+15. Recommandations immediates
+
+- Obtenir le polygone de Riviera 9 Kilos et les coordonnees des capteurs pour tester PostGIS.
+- Finaliser avec les responsables les contrats MQTT et IA, les roles et les niveaux necessitant validation.
+- Construire ensuite la chaine essentielle cote backend : reception de mesure, stockage, evaluation ou appel IA, creation d'alerte et exposition aux clients.
+- Reporter les fonctions secondaires tant que cette chaine n'est pas testee de bout en bout.
+
+
+16. Demonstration et limites a annoncer
+
+- Le scenario de demonstration propose est le suivant :
+	* Un capteur reel ou simule detecte une montee de l'eau
+	* Le backend recoit et enregistre la mesure
+	* Le calcul du risque fait evoluer l'etat de la zone et le backend rend l'alerte disponible
+	* Les applications clientes affichent la mesure et l'alerte ; leur realisation est hors du perimetre backend
+	* Le service de notification ou le panneau lumineux peut etre active si les integrations et le materiel sont disponibles
+- Les documents recommandent de distinguer clairement ce qui est reel de ce qui est simule.
+- Le reseau complet de capteurs, certaines donnees historiques et l'analyse satellite peuvent etre simules ou prepares a l'avance pour le prototype.
+- La fiabilite d'une prediction dependra de la qualite et de la quantite des donnees disponibles ; cette limite doit etre expliquee pendant la demonstration.
+
+
+17. Conclusion
+
+- Les documents decrivent une vision globale coherente : surveiller le terrain, estimer le risque, informer rapidement la population et aider les autorites.
+- Le perimetre personnel de Levi est le backend et ses integrations ; les applications mobile et web, le materiel IoT et le modele IA restent sous la responsabilite de leurs membres respectifs.
+- Le socle Fastify, la base PostGIS migree et l'API de consultation sont en place ; la prochaine etape est la reception des mesures (lot 5) et l'exposition cartographique des zones (lot 6).
+- Une premiere version backend doit privilegier une chaine simple et testable, de la reception de mesure a l'alerte disponible via API, avant d'ajouter toutes les integrations envisagees.
+

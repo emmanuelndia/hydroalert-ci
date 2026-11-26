@@ -1,0 +1,107 @@
+Deploiement du backend - HydrO'Alerte CI
+
+Guide pas a pas pour mettre l'API en ligne gratuitement.
+Derniere mise a jour : 26/11/2026
+
+Regles de securite :
+- Ne jamais envoyer dans le chat, ni committer, l'URL de connexion Neon, un mot de passe ou un jeton.
+- L'URL de connexion Neon se colle uniquement dans le tableau de bord Render et, si besoin, dans ton propre terminal.
+
+
+Architecture retenue
+
+- Base de donnees : Neon (PostgreSQL avec PostGIS), offre gratuite, sans date d'expiration.
+	* Limites : 1 Go de stockage par projet et 100 heures de calcul par mois.
+	* La base se met en veille quand elle n'est pas utilisee et se reveille automatiquement en quelques secondes.
+- API : Render, service web gratuit, deploye automatiquement depuis la branche backend du depot GitHub.
+	* Limites : mise en veille apres 15 minutes sans requete ; la requete suivante attend environ 1 minute.
+	* Avant une demonstration, ouvrir l'API quelques minutes a l'avance pour la reveiller.
+	* L'offre gratuite convient a un prototype, pas a un service en production reelle.
+- Pourquoi pas la base PostgreSQL de Render : sa version gratuite est supprimee au bout de 30 jours.
+- Les deux services sont places en Europe (Francfort) pour limiter la latence entre l'API et la base.
+- La configuration Render est decrite dans le fichier render.yaml, a la racine du depot.
+
+
+Etape 1 - Creer la base sur Neon
+
+- [ ] Aller sur https://neon.com et creer un compte (connexion avec GitHub possible).
+- [ ] Creer un projet :
+	* Nom : hydroalert
+	* Version de PostgreSQL : 16 (la meme qu'en local)
+	* Region : AWS Europe Central 1 (Frankfurt)
+- [ ] Dans le tableau de bord du projet, cliquer sur « Connect » et copier la chaine de connexion :
+	* Choisir la connexion directe, c'est-a-dire SANS « pooled » (l'adresse de l'hote ne contient pas « -pooler »).
+	* Elle ressemble a : postgresql://utilisateur:motdepasse@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
+- [ ] Ajouter &connect_timeout=15 a la fin de la chaine : cela laisse a la base le temps de se reveiller.
+- [ ] Si la chaine contient &channel_binding=require et que Prisma la refuse a l'etape 3, retirer ce parametre.
+- [ ] Garder cette chaine dans un endroit sur (gestionnaire de mots de passe). Ne pas l'envoyer dans le chat.
+
+Remarques :
+- Il n'est pas necessaire d'activer PostGIS a la main : la migration Prisma execute CREATE EXTENSION postgis.
+
+
+Etape 2 - Pousser le code sur GitHub
+
+- [ ] Committer les changements de la branche backend et les pousser sur GitHub (l'assistant peut le faire sur demande).
+- Render deploie la branche backend. Pour deployer main plus tard, changer « branch » dans render.yaml.
+
+
+Etape 3 - Creer le service sur Render
+
+- [ ] Aller sur https://render.com et creer un compte avec GitHub.
+- [ ] Autoriser Render a acceder au depot emmanuelndia/hydroalert-ci.
+- [ ] Menu « New » puis « Blueprint », choisir le depot hydroalert-ci : Render lit render.yaml.
+- [ ] Render demande les valeurs des variables marquees « sync: false » :
+	* DATABASE_URL : la chaine de connexion Neon de l'etape 1.
+	* API_PUBLIC_URL : https://hydroalert-api.onrender.com
+	  (si ce nom est deja pris, Render affichera une autre adresse : la reporter ici ensuite).
+	* CORS_ORIGINS : https://hydroalert-api.onrender.com
+	  (valeur provisoire ; ajouter plus tard l'adresse du site web d'Arielle, separee par une virgule).
+- [ ] Lancer le deploiement et suivre l'onglet « Logs » :
+	* Le build installe les dependances et compile le projet.
+	* Au demarrage, « prisma migrate deploy » cree les tables et active PostGIS sur Neon.
+	* Le message « API HydrO'Alerte CI prete » confirme le demarrage.
+- [ ] Si l'adresse finale differe de https://hydroalert-api.onrender.com :
+	* Corriger API_PUBLIC_URL et CORS_ORIGINS dans Render (onglet « Environment »), puis relancer le deploiement.
+
+
+Etape 4 - Charger les donnees fictives (facultatif)
+
+La base Neon est vide apres la migration. Pour la remplir avec les donnees de test (zone, capteurs, mesures, alerte),
+executer depuis le dossier du projet, dans PowerShell :
+
+	$env:DATABASE_URL = Read-Host "Chaine de connexion Neon"
+	pnpm db:migrate:status
+	pnpm db:seed
+	Remove-Item Env:DATABASE_URL
+
+- Read-Host demande la chaine sans qu'elle soit enregistree dans un fichier.
+- db:migrate:status doit indiquer « Database schema is up to date » et la base Neon.
+- Remove-Item efface la variable : les commandes suivantes utiliseront de nouveau la base locale de .env.
+
+
+Etape 5 - Verifier
+
+- [ ] https://hydroalert-api.onrender.com/health/live repond {"status":"ok"}.
+- [ ] https://hydroalert-api.onrender.com/health repond {"status":"ok","database":"ok"}.
+- [ ] https://hydroalert-api.onrender.com/zones renvoie la zone Riviera 9 Kilos (si l'etape 4 a ete faite).
+- [ ] https://hydroalert-api.onrender.com/docs affiche Swagger ; « Try it out » fonctionne.
+- [ ] Generer la documentation Word avec l'adresse en ligne :
+	$env:API_PUBLIC_URL = "https://hydroalert-api.onrender.com"; pnpm docs:api; Remove-Item Env:API_PUBLIC_URL
+
+
+Mises a jour
+
+- Chaque push sur la branche backend redeploie automatiquement l'API.
+- Les nouvelles migrations Prisma sont appliquees automatiquement au demarrage (npm run start:render).
+- Ne jamais lancer pnpm db:migrate:dev ni prisma migrate reset contre la base Neon.
+
+
+En cas de probleme
+
+- Build en echec sur pnpm install : verifier que pnpm-lock.yaml est bien committe et a jour.
+- P1001 ou delai depasse au demarrage : la base Neon se reveillait ; verifier connect_timeout=15 et relancer le deploiement.
+- Erreur sur channel_binding : retirer &channel_binding=require de DATABASE_URL.
+- « CORS_ORIGINS est obligatoire en production » : renseigner CORS_ORIGINS dans Render.
+- /health repond 503 : l'API tourne mais n'atteint pas la base ; verifier DATABASE_URL.
+- Copier uniquement les messages d'erreur dans le chat, apres avoir retire toute URL de connexion ou tout mot de passe.
