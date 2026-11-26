@@ -13,7 +13,7 @@ Architecture retenue
 - Base de donnees : Neon (PostgreSQL avec PostGIS), offre gratuite, sans date d'expiration.
 	* Limites : 1 Go de stockage par projet et 100 heures de calcul par mois.
 	* La base se met en veille quand elle n'est pas utilisee et se reveille automatiquement en quelques secondes.
-- API : Render, service web gratuit, deploye automatiquement depuis la branche backend du depot GitHub.
+- API : Render, service web gratuit, deploye automatiquement depuis la branche main du depot GitHub.
 	* Limites : mise en veille apres 15 minutes sans requete ; la requete suivante attend environ 1 minute.
 	* Avant une demonstration, ouvrir l'API quelques minutes a l'avance pour la reveiller.
 	* L'offre gratuite convient a un prototype, pas a un service en production reelle.
@@ -42,8 +42,8 @@ Remarques :
 
 Etape 2 - Pousser le code sur GitHub
 
-- [ ] Committer les changements de la branche backend et les pousser sur GitHub (l'assistant peut le faire sur demande).
-- Render deploie la branche backend. Pour deployer main plus tard, changer « branch » dans render.yaml.
+- [x] Committer les changements sur la branche backend, puis les fusionner dans main et pousser main sur GitHub.
+- Render deploie la branche main (choix fait dans le tableau de bord Render, repris dans render.yaml).
 
 
 Etape 3 - Creer le service sur Render
@@ -92,7 +92,9 @@ Etape 5 - Verifier
 
 Mises a jour
 
-- Chaque push sur la branche backend redeploie automatiquement l'API.
+- Flux de travail : developper sur backend, puis fusionner dans main (pull request GitHub, ou git merge backend sur main).
+- Chaque push sur la branche main redeploie automatiquement l'API ; un push sur backend seul ne change pas l'API en ligne.
+- Fermer les documents Word ouverts depuis docs/ avant de changer de branche (un fichier ouvert bloque Git).
 - Les nouvelles migrations Prisma sont appliquees automatiquement au demarrage (npm run start:render).
 - Ne jamais lancer pnpm db:migrate:dev ni prisma migrate reset contre la base Neon.
 
