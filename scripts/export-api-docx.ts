@@ -53,6 +53,12 @@ const VERSION_HISTORY = [
     changes:
       "Cartographie : GET /zones/geojson et GET /sensors/geojson (FeatureCollection GeoJSON pour la carte), GET /zones/locate (zones contenant un point) et GET /sensors/nearby (capteurs dans un rayon en metres). Aucun changement de format sur les routes existantes.",
   },
+  {
+    version: "0.3.1",
+    date: "26/11/2026",
+    changes:
+      "Protection de l'API : limite de 120 requetes par minute et par adresse IP (erreur 429 RATE_LIMITED, hors routes de sante), corps de requete limite a 100 Ko (erreur 413), en-tetes de securite HTTP. Aucun changement de format sur les reponses.",
+  },
 ];
 
 /** Adresse de l'API, lue dans servers[0].url de la specification (variable API_PUBLIC_URL). */
@@ -132,6 +138,7 @@ const FIELD_DESCRIPTIONS: Record<string, string> = {
 const ERROR_LABELS: Record<string, string> = {
   "400": "VALIDATION_ERROR : parametre ou corps de requete invalide",
   "404": "NOT_FOUND : ressource introuvable",
+  "429": "RATE_LIMITED : trop de requetes, reessayer apres le delai indique par Retry-After",
   "503": "service indisponible (base de donnees injoignable)",
   "500": "INTERNAL_ERROR : erreur interne du serveur",
 };
@@ -325,6 +332,7 @@ function operationSection(method: string, path: string, op: Operation) {
   }
 
   const errorCodes = Object.keys(op.responses ?? {}).filter((status) => status !== "200");
+  if (!errorCodes.includes("429") && !path.startsWith("/health")) errorCodes.push("429");
   if (!errorCodes.includes("500")) errorCodes.push("500");
   children.push(label("Erreurs possibles"));
   for (const status of errorCodes) children.push(bullet(`${status} - ${ERROR_LABELS[status] ?? "erreur"}`));
@@ -406,6 +414,8 @@ async function main() {
       [
         ["400", "VALIDATION_ERROR", "Parametre invalide ; details liste les champs en cause"],
         ["404", "NOT_FOUND", "Ressource ou route introuvable"],
+        ["413", "FST_ERR_CTP_BODY_TOO_LARGE", "Corps de requete superieur a 100 Ko"],
+        ["429", "RATE_LIMITED", "Trop de requetes : 120 par minute et par adresse IP ; l'en-tete Retry-After indique quand reessayer"],
         ["500", "INTERNAL_ERROR", "Erreur interne ; aucun detail technique n'est expose"],
       ],
     ),

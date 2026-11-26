@@ -25,6 +25,8 @@ const envSchema = z
     RISK_EVALUATOR: z.enum(["rule", "none"]).optional(),
     RULE_CRITICAL_WATER_LEVEL_CM: z.coerce.number().positive().max(1000).default(100),
     ALERT_VALIDATION_LEVELS: alertLevelListSchema.optional(),
+    TRUST_PROXY: z.enum(["true", "false"]).default("false"),
+    RATE_LIMIT_MAX: z.coerce.number().int().min(0).max(100_000).default(120),
   })
   .refine((env) => env.NODE_ENV !== "production" || env.CORS_ORIGINS !== undefined, {
     message: "CORS_ORIGINS est obligatoire en production (liste d'origines separees par des virgules)",
@@ -45,6 +47,10 @@ export type AppConfig = {
   ruleCriticalWaterLevelCm: number;
   /** Niveaux d'alerte qui attendent une validation humaine avant diffusion. */
   alertValidationLevels: AlertLevel[];
+  /** Derriere un proxy (Render), lire l'adresse du client dans X-Forwarded-For. */
+  trustProxy: boolean;
+  /** Requetes autorisees par minute et par adresse IP ; 0 desactive la limite. */
+  rateLimitMax: number;
 };
 
 export class ConfigError extends Error {
@@ -88,5 +94,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     riskEvaluator: parsed.RISK_EVALUATOR ?? (parsed.NODE_ENV === "production" ? "none" : "rule"),
     ruleCriticalWaterLevelCm: parsed.RULE_CRITICAL_WATER_LEVEL_CM,
     alertValidationLevels: [...new Set(parsed.ALERT_VALIDATION_LEVELS ?? [])],
+    trustProxy: parsed.TRUST_PROXY === "true",
+    rateLimitMax: parsed.RATE_LIMIT_MAX,
   };
 }

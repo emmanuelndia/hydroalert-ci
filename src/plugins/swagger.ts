@@ -17,7 +17,7 @@ const swaggerPluginImplementation: FastifyPluginAsync<{ publicUrl: string }> = a
         title: "HydrO'Alerte CI - API backend",
         description:
           "API de consultation des zones, capteurs, mesures, predictions et alertes. Les donnees de developpement sont fictives.",
-        version: "0.3.0",
+        version: "0.3.1",
       },
       tags: [
         { name: "Sante", description: "Disponibilite de l'API et de la base" },

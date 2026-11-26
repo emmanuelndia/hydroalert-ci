@@ -131,7 +131,17 @@ test("loadConfig applies defaults when variables are absent or empty", () => {
     riskEvaluator: "rule",
     ruleCriticalWaterLevelCm: 100,
     alertValidationLevels: [],
+    trustProxy: false,
+    rateLimitMax: 120,
   });
+});
+
+test("loadConfig parses proxy trust and the rate limit", () => {
+  const config = loadConfig({ TRUST_PROXY: "true", RATE_LIMIT_MAX: "0" });
+  assert.equal(config.trustProxy, true);
+  assert.equal(config.rateLimitMax, 0);
+  assert.throws(() => loadConfig({ TRUST_PROXY: "oui" }), ConfigError);
+  assert.throws(() => loadConfig({ RATE_LIMIT_MAX: "-1" }), ConfigError);
 });
 
 test("loadConfig keeps the provisional risk rule off in production unless enabled", () => {
