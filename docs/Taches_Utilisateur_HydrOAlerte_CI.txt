@@ -219,9 +219,11 @@ Compte rendu a envoyer apres l'action :
 - [x] Implementer les premieres routes de consultation des zones, capteurs, mesures et alertes.
 - [x] Ajouter les donnees de test sans secret et les tests d'integration PostgreSQL/PostGIS.
 - [x] Rendre l'adresse publique de l'API configurable (API_PUBLIC_URL) et ajouter CORS.
-- [ ] Heberger le backend en ligne : suivre docs/Deploiement_HydrOAlerte_CI.txt (Neon pour la base, Render pour l'API).
-	* Creer les comptes Neon et Render, la base Neon, puis le Blueprint Render.
-	* Ne jamais envoyer la chaine de connexion Neon dans le chat.
+- [x] Heberger le backend en ligne (26/11/2026) : Neon pour la base PostGIS, Render pour l'API.
+	* Adresse publique : https://hydroalert-api.onrender.com (Swagger sur /docs).
+	* Verifie : /health renvoie database ok, /zones renvoie la zone fictive, Swagger declare l'adresse publique.
+	* Guide de reference : docs/Deploiement_HydrOAlerte_CI.txt.
+- [x] Generer docs/API_HydrOAlerte_CI_v0.1.1.docx avec l'adresse publique.
 - [ ] Envoyer docs/API_HydrOAlerte_CI_v<derniere version>.docx a Arielle, Soro et Ange, avec l'adresse hebergee, pour valider les formats de reponse et les filtres.
 - [ ] Demander a Arielle l'adresse (origine) de son site en developpement, par exemple http://localhost:5173, pour l'ajouter a CORS_ORIGINS.
 - [ ] Integrer les geometries de Riviera 9 Kilos apres reception des coordonnees officielles.

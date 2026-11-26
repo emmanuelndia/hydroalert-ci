@@ -7,3 +7,6 @@ dist
 # Fichiers extraits des documents Word et archives en double (les .docx et .pptx d'origine restent suivis)
 docs/temp_*/
 docs/*.zip
+
+# Fichiers de verrouillage temporaires de Word / PowerPoint (crees quand un document est ouvert)
+~$*

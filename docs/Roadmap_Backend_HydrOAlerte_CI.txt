@@ -163,7 +163,7 @@ Lot 13 - Preparation de la demonstration
 - [ ] Verifier que les donnees API sont consommees par les applications clientes.
 - [ ] Tester les notifications ou leur mode simule.
 - [ ] Distinguer clairement les fonctions reelles, simulees et non implementees.
-- [ ] Confirmer l'adresse reseau, l'hebergement ou le tunnel necessaire a la demonstration.
+- [ ] Confirmer l'adresse reseau, l'hebergement ou le tunnel necessaire a la demonstration. (API hebergee sur https://hydroalert-api.onrender.com depuis le 26/11/2026 ; reste a valider avec l'equipe pour la demonstration, avec le reveil de l'API avant passage.)
 - [ ] Preparer un plan de secours avec donnees de demonstration si une integration externe est indisponible.
 
 
