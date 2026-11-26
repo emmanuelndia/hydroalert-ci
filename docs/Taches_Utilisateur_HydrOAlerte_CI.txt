@@ -230,6 +230,14 @@ Compte rendu a envoyer apres l'action :
 	* niveaux d'alerte necessitant une validation avant diffusion (ALERT_VALIDATION_LEVELS) ;
 	* politique d'escalade et de desescalade des alertes.
 
+Protection de l'API (lot 11, 26/11/2026) :
+- [x] Limite de 120 requetes par minute et par adresse IP (routes /health exclues), corps de requete limite a 100 Ko,
+      delai maximal de 30 s, en-tetes de securite HTTP, secrets masques dans les journaux, arret propre au redeploiement.
+- [ ] Dans Render, onglet Environment, verifier que TRUST_PROXY=true et RATE_LIMIT_MAX=120 sont presents.
+	* Ils sont declares dans render.yaml, mais Render ne les ajoute pas toujours a un service deja cree.
+	* Sans TRUST_PROXY=true, tous les clients partagent l'adresse du proxy Render, donc une seule limite commune.
+- Documentation API v0.3.1 (ajout des erreurs 413 et 429).
+
 Cartographie (lot 6, 26/11/2026) :
 - [x] Zones et capteurs en GeoJSON, recherche par point et par rayon. Documentation API v0.3.0.
 - [ ] Obtenir le polygone officiel de Riviera 9 Kilos, puis l'importer :

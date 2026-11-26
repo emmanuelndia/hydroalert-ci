@@ -18,6 +18,12 @@ services:
         value: production
       - key: HOST
         value: 0.0.0.0
+      # Render place un proxy devant l'API : l'adresse du client est lue dans X-Forwarded-For.
+      - key: TRUST_PROXY
+        value: "true"
+      # Requetes autorisees par minute et par adresse IP (0 desactive la limite).
+      - key: RATE_LIMIT_MAX
+        value: "120"
       # Render fournit PORT automatiquement.
       - key: DATABASE_URL
         sync: false

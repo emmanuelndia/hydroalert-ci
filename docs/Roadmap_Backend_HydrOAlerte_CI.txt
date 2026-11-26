@@ -135,8 +135,8 @@ Lot 10 - API de consultation, tableau de bord et temps reel
 
 Lot 11 - Audit, securite et fiabilite
 - [ ] Tracer les actions importantes sur utilisateurs, capteurs, zones, alertes et signalements.
-- [ ] Verifier qu'aucun mot de passe, secret ou jeton ne figure dans les logs.
-- [ ] Ajouter des controles d'entree, limites de taille et protections adaptees aux endpoints publics.
+- [x] Verifier qu'aucun mot de passe, secret ou jeton ne figure dans les logs. (en-tetes jamais journalises, parametres d'URL sensibles masques, teste)
+- [x] Ajouter des controles d'entree, limites de taille et protections adaptees aux endpoints publics. (validation Zod, 120 requetes/min/IP, corps 100 Ko, delai 30 s, en-tetes de securite)
 - [ ] Verifier la configuration CORS avec les applications clientes.
 - [ ] Ajouter des tests des droits et des acces aux donnees personnelles.
 - [ ] Verifier les index et les requetes frequentes sur les historiques.
@@ -153,7 +153,7 @@ Lot 12 - Tests, documentation et integration
 - [ ] Fournir des donnees et comptes de test sans secrets de production.
 - [ ] Integrer les modules progressivement a partir de leurs contrats respectifs.
 - [ ] Tester le parcours complet backend : mesure, stockage, prediction, alerte et diffusion.
-- [ ] Documenter l'installation, la configuration, les migrations et le lancement du backend.
+- [x] Documenter l'installation, la configuration, les migrations et le lancement du backend. (README.md)
 
 
 Lot 13 - Preparation de la demonstration
