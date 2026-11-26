@@ -1,0 +1,425 @@
+Modele de donnees cible - HydrO'Alerte CI
+
+Proposition de modele pour le perimetre backend. Les champs et statuts sont a valider avec l'equipe, en particulier les contrats des capteurs et du service IA. Les applications web et mobile, le materiel IoT et le modele IA ne sont pas inclus dans le perimetre de developpement backend ; leurs donnees sont gerees par l'API.
+
+
+1. Utilisateur
+
+- id
+- nom
+- telephone
+- email
+- motDePasseHash
+- role
+- languePreferee
+- actif
+- dateCreation
+- dateModification
+
+Roles possibles :
+- CITOYEN
+- AGENT
+- SUPERVISEUR
+- ADMINISTRATEUR
+
+Remarques :
+- Le telephone peut etre l'identifiant principal si l'inscription se fait par SMS.
+- Le mot de passe n'est pas necessaire si l'equipe choisit une authentification uniquement par code SMS.
+- Un utilisateur peut suivre plusieurs zones, enregistrer plusieurs appareils et creer des signalements ou demandes SOS.
+
+
+2. Zone
+
+- id
+- nom
+- description
+- geometrie
+- active
+- dateCreation
+- dateModification
+
+Geometrie :
+- Polygone ou multipolygone PostGIS en SRID 4326.
+- La geometrie permet de determiner si un capteur, un signalement ou une position se trouve dans la zone.
+
+
+3. ZoneSuivie
+
+- id
+- utilisateurId
+- zoneId
+- nomPersonnalise
+- typeZone
+- dateCreation
+
+Types possibles :
+- DOMICILE
+- TRAVAIL
+- ECOLE
+- AUTRE
+
+Remarques :
+- Cette table associe les utilisateurs aux zones pour lesquelles ils souhaitent recevoir des alertes.
+- Une contrainte unique sur utilisateurId et zoneId peut eviter les abonnements en double.
+- A conserver uniquement si le choix des zones suivies est inclus dans le MVP.
+
+
+4. Capteur
+
+- id
+- codeCapteur
+- nom
+- zoneId
+- position
+- typeCapteur
+- cleAccesHash
+- statut
+- batteriePct
+- derniereCommunication
+- dateCreation
+- dateModification
+
+Types possibles :
+- NIVEAU_EAU
+- PLUIE
+- DEBIT
+- AUTRE
+
+Statuts possibles :
+- ACTIF
+- HORS_LIGNE
+- EN_MAINTENANCE
+- DESACTIVE
+
+Remarques :
+- codeCapteur est un identifiant lisible et unique, par exemple CAP-COC-01.
+- position est un point PostGIS en SRID 4326.
+- cleAccesHash est l'empreinte d'une cle, jamais la cle secrete en clair.
+- batteriePct et derniereCommunication representent le dernier etat connu du capteur.
+
+
+5. MesureCapteur
+
+- id
+- capteurId
+- dateMesure
+- niveauEauCm
+- pluieMm
+- debit
+- batteriePct
+- chargeUtile
+- dateReception
+
+Remarques :
+- capteurId reference le capteur ayant transmis la mesure.
+- niveauEauCm, pluieMm et debit sont renseignes selon les capteurs effectivement installes.
+- dateMesure est l'heure fournie par le capteur ; dateReception est l'heure de reception par le backend.
+- chargeUtile est facultative et peut conserver le message brut recu pour le diagnostic.
+- Un index sur capteurId et dateMesure facilite la consultation de l'historique.
+- L'unite et le format du debit restent a definir dans le contrat IoT ; MQTT/Mosquitto est le transport de reference.
+
+
+6. PredictionRisque
+
+- id
+- zoneId
+- scoreRisque
+- niveauRisque
+- probabilite
+- horizonHeures
+- originePrediction
+- versionModele
+- resumeDonnees
+- datePrediction
+- dateCreation
+
+Origines possibles :
+- REGLE
+- IA
+- SIMULATION
+
+Niveaux retenus :
+- NORMAL
+- VIGILANCE
+- DANGER
+- EVACUATION
+
+Seuils de score :
+- NORMAL : 0 a 39.
+- VIGILANCE : 40 a 64.
+- DANGER : 65 a 84.
+- EVACUATION : 85 a 100.
+
+Couleurs de presentation proposees :
+- NORMAL : vert.
+- VIGILANCE : orange.
+- DANGER : rouge.
+- EVACUATION : rouge.
+
+Remarques :
+- scoreRisque est un nombre de 0 a 100 selon les seuils fixes du PowerPoint de mi-parcours.
+- probabilite et horizonHeures sont renseignes si le service IA les fournit.
+- versionModele est facultative pour une prediction produite par des regles.
+- resumeDonnees peut conserver les principales donnees ayant servi au calcul, sans dupliquer tout l'historique.
+
+
+7. Alerte
+
+- id
+- numeroAlerte
+- zoneId
+- predictionId
+- creeeParUtilisateurId
+- niveau
+- titre
+- message
+- statut
+- validationRequise
+- valideeParUtilisateurId
+- dateValidation
+- dateDebut
+- dateFin
+- dateCreation
+- dateModification
+
+Statuts possibles :
+- EN_ATTENTE_VALIDATION
+- ACTIVE
+- RESOLUE
+- ANNULEE
+
+Niveaux d'alerte retenus :
+- VIGILANCE
+- DANGER
+- EVACUATION
+
+NORMAL (score 0 a 39) ne genere pas d'alerte.
+
+Remarques :
+- predictionId est facultatif pour une alerte creee manuellement.
+- creeeParUtilisateurId est facultatif pour une alerte generee automatiquement.
+- Une alerte peut avoir plusieurs notifications associees.
+- Les seuils et niveaux sont fixes par le PowerPoint ; la couleur est un attribut de presentation derive du niveau.
+
+
+8. AppareilNotification
+
+- id
+- utilisateurId
+- jetonFirebase
+- plateforme
+- actif
+- derniereUtilisation
+- dateCreation
+
+Plateformes possibles :
+- ANDROID
+- IOS
+- AUTRE
+
+Remarques :
+- jetonFirebase doit etre unique.
+- Cette table permet au backend d'adresser les notifications push aux appareils d'un utilisateur.
+- La gestion des ecrans et de l'application mobile est hors du perimetre backend.
+
+
+9. Notification
+
+- id
+- alerteId
+- utilisateurId
+- appareilNotificationId
+- canal
+- destinataire
+- statut
+- referenceFournisseur
+- messageErreur
+- dateEnvoi
+- dateCreation
+
+Canaux possibles :
+- PUSH
+- SMS
+- VOCAL
+- SIMULATION
+
+Statuts possibles :
+- EN_ATTENTE
+- ENVOYEE
+- ECHEC
+- SIMULEE
+
+Remarques :
+- utilisateurId et appareilNotificationId peuvent etre absents pour un envoi par zone ou par groupe.
+- Cette table conserve l'historique des tentatives d'envoi et leur resultat.
+- Les SMS et messages vocaux reels dependent du fournisseur retenu et peuvent etre hors du MVP.
+
+
+10. Signalement
+
+- id
+- utilisateurId
+- zoneId
+- type
+- description
+- position
+- photoUrl
+- statut
+- assigneAUtilisateurId
+- dateCreation
+- dateModification
+
+Types possibles :
+- ROUTE_INONDEE
+- CANIVEAU_BOUCHE
+- EBOULEMENT
+- MAISON_MENACEE
+- AUTRE
+
+Statuts possibles :
+- RECU
+- EN_COURS
+- RESOLU
+- REJETE
+
+Remarques :
+- utilisateurId peut etre facultatif si les signalements anonymes sont autorises.
+- position est un point PostGIS en SRID 4326.
+- photoUrl est facultatif ; le stockage des fichiers peut etre gere par un service externe.
+- assigneAUtilisateurId reference l'agent charge du traitement, si cette fonction est retenue.
+
+
+11. ConfirmationSignalement
+
+- id
+- signalementId
+- utilisateurId
+- dateConfirmation
+
+Remarques :
+- Cette table permet a d'autres utilisateurs de confirmer un signalement.
+- Une contrainte unique sur signalementId et utilisateurId evite les confirmations multiples d'un meme utilisateur.
+- Table a inclure si la confirmation citoyenne est retenue dans le prototype.
+
+
+12. DemandeSOS
+
+- id
+- utilisateurId
+- position
+- description
+- statut
+- assigneeAUtilisateurId
+- dateCreation
+- dateModification
+
+Statuts possibles :
+- RECUE
+- EN_COURS
+- RESOLUE
+- ANNULEE
+
+Remarques :
+- position est un point PostGIS en SRID 4326.
+- L'acces aux positions SOS doit etre limite aux roles autorises.
+
+
+13. Refuge
+
+- id
+- nom
+- adresse
+- position
+- capacite
+- occupationActuelle
+- statut
+- dateCreation
+- dateModification
+
+Statuts possibles :
+- OUVERT
+- FERME
+- COMPLET
+
+Remarques :
+- Cette entite est facultative si la gestion des refuges n'est pas incluse dans le MVP.
+- position est un point PostGIS en SRID 4326.
+
+
+14. AuditLog
+
+- id
+- utilisateurId
+- action
+- objetType
+- objetId
+- ancienneValeur
+- nouvelleValeur
+- adresseIP
+- commentaire
+- dateCreation
+
+Remarques :
+- utilisateurId peut etre absent pour une action automatique du systeme.
+- ancienneValeur et nouvelleValeur peuvent etre stockees en JSON.
+- Ne jamais enregistrer de mot de passe, cle secrete ou jeton d'authentification dans le journal.
+
+
+15. ParametreAlerte
+
+- id
+- nom
+- valeur
+- description
+- modifieParUtilisateurId
+- dateModification
+
+Exemples de parametres :
+- Seuils des scores de risque
+- Delai minimum entre deux notifications similaires
+- Duree avant de considerer un capteur hors ligne
+- Distance de georeperage autour d'une zone en alerte
+
+Remarques :
+- Cette table est optionnelle ; des valeurs fixes dans la configuration peuvent suffire pour une premiere demonstration.
+- Les parametres doivent etre modifies uniquement par les roles autorises.
+
+
+16. Relations principales
+
+- Un utilisateur peut suivre plusieurs zones via ZoneSuivie.
+- Une zone peut contenir plusieurs capteurs.
+- Un capteur produit plusieurs mesures.
+- Une zone peut avoir plusieurs predictions et plusieurs alertes.
+- Une prediction concerne une zone et peut declencher une alerte.
+- Une alerte peut produire plusieurs notifications.
+- Un utilisateur peut posseder plusieurs appareils de notification.
+- Un utilisateur peut creer plusieurs signalements et demandes SOS.
+- Un signalement peut recevoir plusieurs confirmations et etre assigne a un agent.
+- Une demande SOS peut etre assignee a un agent.
+- Les actions importantes sont conservees dans AuditLog.
+
+
+17. Regles de donnees a respecter
+
+- Utiliser un identifiant interne unique pour chaque entite et un code lisible distinct pour les capteurs et les alertes.
+- Enregistrer les dates en UTC ; convertir les dates uniquement lors de l'affichage.
+- Utiliser PostGIS pour les polygones de zones et les positions geographiques.
+- Ajouter des index sur les cles etrangeres, les statuts et les dates utilisees dans les recherches.
+- Conserver la cle d'acces des capteurs sous forme d'empreinte et non en clair.
+- Definir les champs obligatoires, unites et formats du contrat de mesure avec le responsable IoT.
+- Valider avec le responsable IA les champs de PredictionRisque et les niveaux de risque definitifs.
+- Commencer par les entites du coeur : Zone, Capteur, MesureCapteur, PredictionRisque et Alerte.
+- Ajouter ZoneSuivie, ConfirmationSignalement, Refuge et ParametreAlerte uniquement si elles sont necessaires au perimetre valide du prototype.
+
+
+18. Implementation initiale du backend
+
+- Le schema Prisma et la migration initiale couvrent Zone, Capteur, MesureCapteur, PredictionRisque et Alerte.
+- PostgreSQL utilise PostGIS ; les zones sont stockees en MultiPolygon SRID 4326 et les positions des capteurs en Point SRID 4326.
+- Les contraintes SQL valident les plages de batterie, de score et de probabilite, ainsi que les mesures non negatives.
+- Les geometries PostGIS sont de type non pris en charge directement par Prisma ; leur lecture et leur ecriture geospatiales passent par du SQL Prisma brut.
+- Les index GIST des geometries sont declares dans le schema Prisma (type: Gist) pour que Prisma ne propose pas de les supprimer ; les contraintes CHECK restent uniquement dans le SQL de migration.
+- La migration est appliquee sur la base de developpement et sur la base de test.
+- Les donnees fictives (prisma/seed.ts) utilisent des UUID fixes ; le polygone de Riviera 9 Kilos y est approximatif et devra etre remplace par le polygone officiel.
+- Les autres entites du modele restent hors de cette premiere migration.

@@ -1,0 +1,216 @@
+Regles metier - HydrO'Alerte CI
+
+Regles pour le perimetre backend. Les seuils de risque sont repris du PowerPoint ; les details du contrat capteur et les niveaux necessitant une validation doivent etre finalises avec l'equipe.
+
+
+1. Mesures des capteurs
+
+- Une mesure doit etre associee a un capteur connu et actif.
+- Une mesure doit avoir une date de mesure.
+- Une mesure doit contenir au moins une valeur exploitable correspondant au type de capteur.
+- Une mesure doit respecter le schema convenu avec le responsable IoT.
+- Les valeurs numeriques doivent etre valides et dans les limites physiques convenues ; une valeur invalide est rejetee et signalee.
+- La valeur de batterie, si elle est fournie, doit etre comprise entre 0 et 100.
+- Le niveau d'eau, la pluie et le debit doivent utiliser les unites convenues dans le contrat capteur.
+- Toute mesure acceptee est enregistree avec sa date de mesure et sa date de reception par le backend.
+- Le backend ne doit pas modifier silencieusement les valeurs originales recues.
+- Une mesure identique retransmise ne doit pas creer de doublon si une cle d'idempotence ou une regle de detection des doublons est definie.
+- Le backend met a jour la derniere communication et le dernier etat connu du capteur a la reception d'une mesure valide.
+- Le seuil de temps apres lequel un capteur est considere hors ligne doit etre configurable ou defini par l'equipe.
+
+
+2. Capteurs
+
+- Chaque capteur doit avoir un code unique.
+- Un capteur actif peut transmettre des mesures ; un capteur desactive ou en maintenance ne doit pas alimenter le calcul de risque sans decision explicite.
+- Une cle d'acces de capteur doit etre verifiee avant d'accepter une mesure.
+- Une cle secrete ne doit jamais etre conservee ou journalisee en clair.
+- Un capteur peut etre rattache a une zone ; la zone et la position doivent rester coherentes.
+- Le statut hors ligne est determine a partir de l'absence de communication pendant la duree retenue.
+- Une mesure invalide ne doit pas remettre a jour le statut de communication comme si une mesure normale avait ete acceptee, sauf decision explicite de suivi technique.
+
+
+3. Zones et positions
+
+- Une zone active doit avoir un nom et une geometrie valide.
+- La geometrie d'une zone doit etre un polygone ou multipolygone valide dans le systeme de coordonnees convenu.
+- Une position envoyee en latitude et longitude doit contenir des coordonnees numeriques dans les plages autorisees.
+- Une position peut etre associee a une zone par calcul geographique PostGIS.
+- Les distances utilisees pour le georeperage doivent etre exprimees en metres et calculees dans un systeme geographique adapte.
+- Une zone inactive reste disponible dans l'historique mais ne doit pas etre utilisee pour de nouvelles predictions automatiques.
+- Riviera 9 Kilos, a Cocody, est la zone pilote retenue dans le PowerPoint.
+- Le polygone exact et les coordonnees des capteurs doivent etre integres au backend.
+
+
+4. Predictions de risque
+
+- Une prediction doit etre rattachee a une zone connue.
+- Un score de risque doit etre un nombre compris entre 0 et 100.
+- Le niveau de risque doit correspondre au score selon les seuils fixes du PowerPoint.
+- Le resultat recu du service IA doit etre valide avant enregistrement ; une reponse invalide ou indisponible ne doit pas etre convertie silencieusement en prediction de succes.
+- Une prediction conserve sa date, son origine (regle, IA ou simulation) et, si disponible, la version du modele.
+- Une prediction doit pouvoir etre enregistree sans probabilite ni horizon si le service externe ne les fournit pas.
+- Le backend conserve l'historique des predictions au lieu d'ecraser les anciens resultats.
+- En l'absence du service IA, une regle de substitution ne peut etre utilisee que si elle est explicitement retenue pour le prototype et identifiee comme simulation ou regle.
+
+
+5. Seuils et niveaux d'alerte
+
+- Les classes de risque de reference, fixees par le PowerPoint, sont :
+	* NORMAL : score de 0 a 39
+	* VIGILANCE : score de 40 a 64
+	* DANGER : score de 65 a 84
+	* EVACUATION : score de 85 a 100
+- Pour les trois couleurs mentionnees dans les besoins backend, la correspondance de presentation proposee est : NORMAL vert, VIGILANCE orange, DANGER rouge et EVACUATION rouge.
+- Le niveau de risque est la valeur metier de reference ; la couleur sert uniquement a l'affichage.
+- Une alerte ne doit pas etre declenchee sur la seule base d'un score si le score ou la prediction ne passe pas les validations convenues.
+- Les regles peuvent tenir compte du passage a un niveau superieur ou du maintien d'un niveau, selon la politique anti-doublon retenue.
+
+
+6. Creation et cycle de vie des alertes
+
+- Une alerte automatique doit etre associee a une zone et, si elle provient d'une prediction, a cette prediction.
+- Une alerte creee manuellement doit identifier l'utilisateur autorise qui l'a creee.
+- Une alerte doit contenir au minimum une zone, un niveau, un message et une date de debut.
+- Une alerte qui requiert une validation reste en attente et n'est pas diffusee comme une alerte publiee avant validation.
+- Seul un utilisateur disposant du role autorise peut valider, modifier ou resoudre une alerte.
+- Une alerte validee ou publiee devient active et peut declencher les notifications prevues.
+- Une alerte resolue ou annulee reste consultable dans l'historique et ne doit plus etre diffusee comme active.
+- Une nouvelle prediction identique ne doit pas creer une nouvelle alerte a chaque calcul ; le backend doit eviter les alertes actives en double pour une meme zone et un meme niveau.
+- Une hausse ou une baisse du niveau peut mettre a jour une alerte active ou creer une nouvelle entree selon une regle de cycle de vie a valider.
+- La date de fin est facultative tant que l'alerte est active ; elle est renseignee lors de sa resolution ou de son expiration.
+
+
+7. Notifications
+
+- Une notification est liee a une alerte lorsqu'elle sert a diffuser cette alerte.
+- Le backend enregistre le canal, le destinataire, la date et le resultat de chaque tentative d'envoi.
+- Une notification n'est marquee comme envoyee qu'apres confirmation du fournisseur ou du service d'envoi.
+- Un echec d'envoi doit etre conserve avec son statut et son erreur utile ; il ne doit pas etre presente comme un succes.
+- Les notifications ne sont envoyees qu'aux utilisateurs, appareils ou groupes correspondant aux regles de ciblage definies.
+- Les jetons Firebase invalides ou revoques doivent pouvoir etre desactives selon la reponse du fournisseur.
+- Les notifications de doublon doivent etre evitees selon une cle ou une regle d'idempotence a definir.
+- SMS, messages vocaux et panneau lumineux ne sont integres que si le canal et le fournisseur sont retenus pour le prototype.
+
+
+8. Utilisateurs et autorisations
+
+- Un utilisateur doit avoir un role connu et un statut actif pour acceder aux fonctions protegees.
+- Chaque route privee doit verifier l'identite et le role requis avant d'executer l'action.
+- Un citoyen ne peut consulter ou modifier que ses propres informations et les donnees accessibles au public selon les regles definies.
+- La validation et la resolution des alertes sont reservees aux roles autorises.
+- Le traitement et l'assignation des signalements et des demandes SOS sont reserves aux roles autorises.
+- Les roles definitifs et les droits associes doivent etre valides par l'equipe.
+- Les mots de passe, lorsqu'ils sont utilises, doivent etre haches ; les jetons et secrets ne doivent pas etre exposes dans les reponses ou les journaux.
+
+
+9. Signalements citoyens
+
+- Un signalement doit avoir un type, une position et une date de creation.
+- Une description peut etre obligatoire ou facultative selon le formulaire retenu.
+- La position doit etre valide et peut etre rattachee a une zone.
+- Une photo est facultative ; le backend conserve une reference vers le fichier plutot que le contenu binaire si le stockage est gere par un service externe.
+- Un signalement commence avec le statut RECU.
+- Un utilisateur autorise peut faire passer le signalement a EN_COURS, RESOLU ou REJETE.
+- Le changement de statut et l'agent responsable doivent etre traces.
+- Les confirmations d'un meme signalement par un meme utilisateur ne doivent pas etre comptabilisees plusieurs fois.
+- Un signalement n'est pas automatiquement considere comme confirme ou comme une alerte officielle.
+
+
+10. Demandes SOS
+
+- Une demande SOS doit etre associee a un utilisateur et a une position valide.
+- La description peut etre facultative.
+- Une demande commence avec le statut RECUE et son traitement doit etre visible par les roles autorises.
+- Seuls les utilisateurs autorises peuvent consulter les positions et details des demandes SOS.
+- L'assignation, le changement de statut et la resolution doivent etre traces.
+- Une demande SOS est distincte d'un signalement et ne declenche pas automatiquement une prediction d'inondation.
+
+
+11. Zones suivies et refuges
+
+- Un utilisateur ne peut pas enregistrer deux fois la meme zone dans sa liste de zones suivies.
+- Une zone suivie doit referencer une zone active.
+- La liste de zones suivies est optionnelle et depend de la decision d'inclure cette fonction dans le MVP.
+- Un refuge ne peut etre propose comme ouvert que si son statut est OUVERT et sa capacite disponible, lorsque ces informations sont gerees.
+- Les donnees de refuges sont optionnelles et doivent etre maintenues par un role autorise.
+
+
+12. Historique et audit
+
+- Les mesures, predictions, alertes et notifications doivent conserver leur historique.
+- La creation, la modification, la validation, l'assignation, la resolution et l'annulation d'une alerte doivent etre tracees.
+- Les actions importantes sur les utilisateurs, capteurs, zones, signalements et demandes SOS doivent etre tracees.
+- Un evenement d'audit identifie l'action, l'objet, la date et l'utilisateur ou le systeme a l'origine de l'action.
+- Les journaux d'audit ne doivent contenir ni mot de passe, ni cle secrete, ni jeton d'authentification.
+- Les enregistrements historiques ne sont pas supprimes lorsqu'une entite est desactivee ou qu'une alerte est resolue.
+
+
+13. Suppression et desactivation
+
+- Pas de suppression physique des mesures, predictions, alertes, notifications, signalements ou demandes SOS dans le MVP.
+- Preferer un statut actif/inactif pour les utilisateurs, zones et capteurs qui ne doivent plus etre selectionnes.
+- Une alerte ou un signalement incorrect est annule ou rejete avec une trace plutot que supprime.
+- Toute operation de suppression exceptionnelle doit respecter les obligations de protection des donnees et les besoins d'audit.
+
+
+14. API et erreurs
+
+- Toute donnee entrante est validee avant traitement et enregistrement.
+- Une requete invalide renvoie une erreur explicite avec un code HTTP adapte et un message exploitable.
+- Une ressource inexistante renvoie une reponse de type non trouve et ne cree pas de valeur de remplacement.
+- Une erreur de base de donnees, de broker MQTT, de service IA ou de fournisseur de notification ne doit pas etre masquee comme une operation reussie.
+- Les reponses API ne doivent pas exposer les secrets, les empreintes de cles, les mots de passe ou les donnees privees non autorisees.
+- Le contrat OpenAPI doit rester aligne sur les validations et formats effectivement implementes.
+
+
+15. Donnees minimales obligatoires
+
+Capteur :
+- code unique.
+- type de capteur.
+- statut.
+
+Mesure :
+- capteur connu et autorise.
+- date de mesure.
+- au moins une valeur mesuree valide.
+
+Prediction :
+- zone.
+- score valide si un score est produit.
+- niveau coherent avec les seuils en vigueur.
+- origine et date de prediction.
+
+Alerte :
+- zone.
+- niveau.
+- message.
+- date de debut.
+- statut.
+
+Signalement :
+- type.
+- position valide.
+- statut.
+- date de creation.
+
+Demande SOS :
+- utilisateur.
+- position valide.
+- statut.
+- date de creation.
+
+
+16. Details d'integration a finaliser avec l'equipe
+
+- Seuil de temps pour declarer un capteur hors ligne.
+- Schema final MQTT, topics, mesures, unites et regles de detection des doublons avec le responsable IoT.
+- Regles de creation ou de mise a jour d'alerte lorsqu'un niveau change.
+- Niveaux qui necessitent la validation d'un superviseur ou d'un agent explicitement autorise avant diffusion.
+- Delai anti-doublon et canaux de notification actifs pour le prototype.
+- Roles definitifs et autorisations associees.
+- Utilisation des zones suivies, confirmations citoyennes, demandes SOS et refuges dans le MVP.
+- Contrat et disponibilite du service IA ; comportement du backend si ce service est indisponible.
+- Politique de conservation des donnees personnelles et des photos de signalement.
+- Polygone exact de Riviera 9 Kilos et coordonnees des capteurs.

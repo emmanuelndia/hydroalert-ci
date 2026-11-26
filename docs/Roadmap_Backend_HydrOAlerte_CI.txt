@@ -1,0 +1,186 @@
+Roadmap backend - HydrO'Alerte CI
+
+
+
+Lot 0 - Cadrage backend et contrats d'interface
+- [ ] Confirmer le perimetre du prototype backend et les fonctionnalites indispensables.
+- [x] Valider le choix Node.js, Fastify, TypeScript, PostgreSQL, PostGIS et Prisma.
+- [x] Retenir MQTT/Mosquitto comme transport de reference pour les capteurs.
+- [ ] Definir le contrat des mesures avec le responsable IoT : topics, champs, unites, date, identifiant et authentification.
+- [ ] Definir les endpoints necessaires aux applications web et mobile avec leurs responsables.
+- [ ] Definir le contrat d'appel du service IA avec son responsable : entree, sortie, score, niveau et erreurs.
+- [x] Reprendre les niveaux et seuils du PowerPoint : NORMAL 0-39, VIGILANCE 40-64, DANGER 65-84, EVACUATION 85-100.
+- [ ] Appliquer la correspondance de presentation proposee : vert, orange, rouge, rouge.
+- [ ] Definir quels niveaux necessitent une validation avant diffusion.
+- [ ] Definir les roles backend et les actions autorisees.
+- [x] Retenir Riviera 9 Kilos, a Cocody, comme zone pilote.
+- [ ] Obtenir le polygone exact de la zone et les coordonnees des capteurs.
+- [ ] Identifier les fonctionnalites hors MVP et celles qui seront simulees.
+
+
+Lot 1 - Environnement et structure backend
+- [x] Verifier les versions Node.js et pnpm utilisees par le projet.
+- [x] Organiser les modules backend : plugins, routes, services, schemas et types.
+- [x] Ajouter .env.example et verifier que .env est ignore par Git.
+- [x] Configurer une instance PostgreSQL locale et ses variables d'environnement.
+- [x] Ajouter la configuration des environnements de developpement et de test.
+- [x] Mettre en place la gestion centralisee des erreurs et des reponses HTTP.
+- [x] Exposer GET /health/live et GET /health avec controle de disponibilite de la base.
+- [x] Definir les commandes de developpement, tests et migrations.
+
+
+Lot 2 - Base de donnees et modele initial
+- [x] Creer le schema Prisma initial pour les entites du coeur.
+- [x] Ajouter a la migration l'activation de PostGIS et les colonnes spatiales.
+- [x] Definir les tables Zone et Capteur dans le schema et la migration.
+- [x] Definir MesureCapteur et son lien avec Capteur.
+- [x] Definir PredictionRisque et Alerte dans le schema et la migration.
+- [ ] Ajouter les utilisateurs, roles, appareils de notification et audit selon le perimetre valide.
+- [ ] Ajouter les tables optionnelles ZoneSuivie, Signalement, DemandeSOS et Refuge si elles sont retenues.
+- [x] Appliquer et tester la migration sur une instance PostgreSQL avec PostGIS.
+- [x] Ajouter les index, cles et contraintes au schema et a la migration.
+- [x] Creer un jeu de donnees fictives pour les tests locaux.
+
+
+Lot 3 - API de base et documentation
+- [x] Configurer le serveur Fastify et ses plugins principaux.
+- [x] Ajouter la validation des parametres et corps de requetes avec Zod.
+- [x] Definir un format coherent pour les erreurs API.
+- [x] Ajouter Swagger / OpenAPI et documenter les endpoints disponibles.
+- [x] Implementer les endpoints de consultation des zones et capteurs.
+- [x] Implementer les endpoints de consultation des mesures et historiques.
+- [x] Implementer la pagination et les filtres necessaires aux listes.
+- [x] Tester les cas de succes, les donnees invalides et les ressources inexistantes.
+
+
+Lot 4 - Utilisateurs, authentification et autorisations
+- [ ] Confirmer le mode d'inscription et de connexion : mot de passe ou code SMS.
+- [ ] Implementer la creation et la consultation des comptes selon le parcours retenu.
+- [ ] Hacher les mots de passe si une authentification par mot de passe est retenue.
+- [ ] Emettre et verifier les jetons JWT si cette methode est retenue.
+- [ ] Implementer les roles et les protections de routes.
+- [ ] Verifier les autorisations pour valider une alerte et traiter un signalement ou une demande SOS.
+- [ ] Enregistrer les jetons Firebase des appareils si les notifications push sont dans le MVP.
+- [ ] Tester qu'un role non autorise ne peut pas effectuer une action protegee.
+
+
+Lot 5 - Capteurs et reception des mesures
+- [ ] Creer les endpoints de gestion des capteurs necessaires au prototype.
+- [ ] Mettre en place l'authentification des capteurs.
+- [ ] Implementer la reception MQTT avec Mosquitto selon le contrat IoT.
+- [ ] Valider le schema, les unites, l'horodatage et les limites numeriques des mesures.
+- [ ] Enregistrer les mesures et l'heure de reception.
+- [ ] Mettre a jour la derniere communication et l'etat connu du capteur.
+- [ ] Eviter les doublons selon une regle d'idempotence definie.
+- [ ] Ajouter un simulateur de capteurs ou des donnees de test.
+- [ ] Detecter les capteurs silencieux selon un delai convenu.
+- [ ] Tester les mesures valides, invalides, non authentifiees et retransmises.
+
+
+Lot 6 - Zones, PostGIS et georeperage
+- [ ] Enregistrer et modifier les zones avec des geometries valides.
+- [ ] Stocker les positions des capteurs et des signalements en PostGIS.
+- [ ] Associer les capteurs et positions aux zones correspondantes.
+- [ ] Ajouter les requetes geographiques necessaires avec SQL brut si Prisma ne suffit pas.
+- [ ] Implementer les recherches de points dans une zone et de proximite en metres.
+- [ ] Exposer les zones et donnees cartographiques au format GeoJSON.
+- [ ] Tester les geomettries, coordonnees et cas limites avec des donnees fictives.
+
+
+Lot 7 - Predictions et regles d'alerte
+- [ ] Implementer les quatre niveaux et seuils fixes dans le PowerPoint.
+- [ ] Creer l'interface backend permettant de solliciter le service IA externe.
+- [ ] Valider et enregistrer les reponses du service IA.
+- [ ] Definir un comportement explicite en cas de reponse invalide ou d'indisponibilite du service IA.
+- [ ] Ajouter une regle de risque simulee uniquement si elle est validee pour la demonstration.
+- [ ] Creer l'alerte lorsque les conditions retenues sont satisfaites.
+- [ ] Gerer les statuts : attente de validation, active, resolue ou annulee.
+- [ ] Permettre aux utilisateurs autorises de valider, modifier ou resoudre une alerte.
+- [ ] Eviter les alertes actives en double pour une meme zone et un meme niveau.
+- [ ] Conserver l'historique des predictions et alertes.
+- [ ] Tester les seuils, changements de niveau, validations et cas anti-doublon.
+
+
+Lot 8 - Notifications et diffusion cote serveur
+- [ ] Creer un service backend commun pour la diffusion des notifications.
+- [ ] Enregistrer les tentatives et resultats d'envoi dans l'historique.
+- [ ] Integrer Firebase Admin / FCM si les identifiants et jetons sont fournis.
+- [ ] Gerer explicitement les erreurs du fournisseur et les jetons invalides.
+- [ ] Eviter les notifications en double selon la regle definie avec l'equipe.
+- [ ] Ajouter un mode simule pour la demonstration si aucun fournisseur reel n'est configure.
+- [ ] Ajouter le SMS uniquement si le fournisseur, le budget et le besoin sont confirmes.
+- [ ] Ne pas presenter un envoi echoue comme une notification envoyee.
+
+
+Lot 9 - Signalements, demandes SOS et refuges
+- [ ] Implementer les endpoints de creation et consultation des signalements si retenus dans le MVP.
+- [ ] Valider le type, la description et la position du signalement.
+- [ ] Permettre aux roles autorises de traiter, assigner, resoudre ou rejeter un signalement.
+- [ ] Ajouter les confirmations citoyennes si cette fonction est retenue.
+- [ ] Implementer la reception et la consultation protegee des demandes SOS si retenues.
+- [ ] Ajouter la gestion backend des refuges si elle est incluse dans le prototype.
+- [ ] Proteger les positions et informations sensibles par des controles d'acces.
+- [ ] Tester les transitions de statut et les droits des utilisateurs.
+
+
+Lot 10 - API de consultation, tableau de bord et temps reel
+- [ ] Fournir les indicateurs backend demandes par la responsable du tableau de bord.
+- [ ] Exposer les alertes actives, dernieres mesures et predictions par zone ou capteur.
+- [ ] Fournir les historiques filtres et pagines.
+- [ ] Ajouter WebSocket ou SSE si le besoin temps reel est confirme par les clients.
+- [ ] Prevoir le rafraichissement periodique comme solution de repli.
+- [ ] Tester les evenements publies et les donnees accessibles aux clients autorises.
+- [ ] Ne pas implementer les interfaces web ou mobiles dans ce lot.
+
+
+Lot 11 - Audit, securite et fiabilite
+- [ ] Tracer les actions importantes sur utilisateurs, capteurs, zones, alertes et signalements.
+- [ ] Verifier qu'aucun mot de passe, secret ou jeton ne figure dans les logs.
+- [ ] Ajouter des controles d'entree, limites de taille et protections adaptees aux endpoints publics.
+- [ ] Verifier la configuration CORS avec les applications clientes.
+- [ ] Ajouter des tests des droits et des acces aux donnees personnelles.
+- [ ] Verifier les index et les requetes frequentes sur les historiques.
+- [ ] Definir une politique de conservation et de suppression des donnees avec l'equipe.
+- [ ] Tester les erreurs de base de donnees, MQTT, IA et fournisseur de notifications.
+
+
+Lot 12 - Tests, documentation et integration
+- [ ] Ecrire les tests unitaires des regles metier et des validations.
+- [ ] Ecrire les tests d'integration des routes et de la base de donnees.
+- [ ] Tester les requetes PostGIS et le georeperage.
+- [ ] Mettre a jour Swagger / OpenAPI avec les contrats valides.
+- [ ] Fournir des exemples de requetes et reponses aux responsables web, mobile, IoT et IA.
+- [ ] Fournir des donnees et comptes de test sans secrets de production.
+- [ ] Integrer les modules progressivement a partir de leurs contrats respectifs.
+- [ ] Tester le parcours complet backend : mesure, stockage, prediction, alerte et diffusion.
+- [ ] Documenter l'installation, la configuration, les migrations et le lancement du backend.
+
+
+Lot 13 - Preparation de la demonstration
+- [ ] Valider le scenario de demonstration avec l'equipe.
+- [ ] Verifier le serveur, la base et le broker MQTT.
+- [ ] Tester une mesure reelle ou simulee jusqu'a la creation d'une alerte.
+- [ ] Verifier que les donnees API sont consommees par les applications clientes.
+- [ ] Tester les notifications ou leur mode simule.
+- [ ] Distinguer clairement les fonctions reelles, simulees et non implementees.
+- [ ] Confirmer l'adresse reseau, l'hebergement ou le tunnel necessaire a la demonstration.
+- [ ] Preparer un plan de secours avec donnees de demonstration si une integration externe est indisponible.
+
+
+Dependances externes a obtenir
+
+- Responsable IoT : topics MQTT, format final des mesures, unites, frequence et identifiants de capteur.
+- Responsable IA : endpoint, authentification, schema d'entree/sortie, seuils et comportement en cas d'erreur.
+- Responsable mobile : besoins d'authentification, jetons Firebase et formats de notifications.
+- Responsable web : donnees de carte, indicateurs, filtres et choix de mise a jour temps reel.
+- Equipe : roles, validation des alertes, perimetre MVP et plan de demonstration. Le site pilote est Riviera 9 Kilos ; le polygone reste a fournir.
+
+
+Ordre recommande pour un MVP backend
+
+- D'abord : Lot 0, Lot 1, Lot 2 et Lot 3.
+- Puis : Lot 5 pour enregistrer des mesures et Lot 6 pour exposer les zones.
+- Ensuite : Lot 7 pour produire des alertes et Lot 8 pour les diffuser.
+- Enfin : integrer les fonctions retenues des lots 4, 9, 10, 11 et 12, puis preparer la demonstration du lot 13.
+- La chaine minimale a demontrer est : reception d'une mesure, enregistrement, evaluation du risque, creation d'une alerte et mise a disposition par API.
+- Les actions a effectuer ou faire confirmer par Levi sont detaillees dans Taches_Utilisateur_HydrOAlerte_CI.txt.

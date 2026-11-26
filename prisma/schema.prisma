@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SensorType {
+  NIVEAU_EAU
+  PLUIE
+  DEBIT
+  AUTRE
+
+  @@map("sensor_type")
+}
+
+enum SensorStatus {
+  ACTIF
+  HORS_LIGNE
+  EN_MAINTENANCE
+  DESACTIVE
+
+  @@map("sensor_status")
+}
+
+enum RiskLevel {
+  NORMAL
+  VIGILANCE
+  DANGER
+  EVACUATION
+
+  @@map("risk_level")
+}
+
+enum PredictionOrigin {
+  REGLE
+  IA
+  SIMULATION
+
+  @@map("prediction_origin")
+}
+
+enum AlertLevel {
+  VIGILANCE
+  DANGER
+  EVACUATION
+
+  @@map("alert_level")
+}
+
+enum AlertStatus {
+  EN_ATTENTE_VALIDATION
+  ACTIVE
+  RESOLUE
+  ANNULEE
+
+  @@map("alert_status")
+}
+
+model Zone {
+  id          String                                     @id @default(uuid()) @db.Uuid
+  name        String                                     @db.VarChar(150)
+  description String?                                    @db.Text
+  geometry    Unsupported("geometry(MultiPolygon,4326)")
+  isActive    Boolean                                    @default(true) @map("is_active")
+  createdAt   DateTime                                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime                                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sensors     Sensor[]
+  predictions Prediction[]
+  alerts      Alert[]
+
+  @@index([geometry], type: Gist, map: "zones_geometry_gist_idx")
+  @@map("zones")
+}
+
+model Sensor {
+  id                String                              @id @default(uuid()) @db.Uuid
+  code              String                              @unique @db.VarChar(64)
+  name              String?                             @db.VarChar(150)
+  zoneId            String                              @map("zone_id") @db.Uuid
+  position          Unsupported("geometry(Point,4326)")
+  type              SensorType                          @map("type")
+  accessKeyHash     String?                             @map("access_key_hash") @db.VarChar(255)
+  status            SensorStatus                        @default(ACTIF)
+  batteryPct        Int?                                @map("battery_pct") @db.SmallInt
+  lastCommunication DateTime?                           @map("last_communication") @db.Timestamptz(3)
+  createdAt         DateTime                            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  zone         Zone          @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  measurements Measurement[]
+
+  @@index([zoneId])
+  @@index([status])
+  @@index([position], type: Gist, map: "sensors_position_gist_idx")
+  @@map("sensors")
+}
+
+model Measurement {
+  id           String   @id @default(uuid()) @db.Uuid
+  sensorId     String   @map("sensor_id") @db.Uuid
+  measuredAt   DateTime @map("measured_at") @db.Timestamptz(3)
+  waterLevelCm Decimal? @map("water_level_cm") @db.Decimal(12, 3)
+  rainMm       Decimal? @map("rain_mm") @db.Decimal(12, 3)
+  flowRate     Decimal? @map("flow_rate") @db.Decimal(16, 6)
+  batteryPct   Int?     @map("battery_pct") @db.SmallInt
+  rawPayload   Json?    @map("raw_payload") @db.JsonB
+  receivedAt   DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  sensor Sensor @relation(fields: [sensorId], references: [id], onDelete: Restrict)
+
+  @@index([sensorId, measuredAt])
+  @@index([receivedAt])
+  @@map("measurements")
+}
+
+model Prediction {
+  id           String           @id @default(uuid()) @db.Uuid
+  zoneId       String           @map("zone_id") @db.Uuid
+  riskScore    Int              @map("risk_score") @db.SmallInt
+  riskLevel    RiskLevel        @map("risk_level")
+  probability  Decimal?         @db.Decimal(5, 4)
+  horizonHours Decimal?         @map("horizon_hours") @db.Decimal(8, 2)
+  origin       PredictionOrigin
+  modelVersion String?          @map("model_version") @db.VarChar(100)
+  inputSummary Json?            @map("input_summary") @db.JsonB
+  predictedAt  DateTime         @map("predicted_at") @db.Timestamptz(3)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  zone   Zone    @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  alerts Alert[]
+
+  @@index([zoneId, predictedAt])
+  @@index([riskLevel, predictedAt])
+  @@map("predictions")
+}
+
+model Alert {
+  id                 String      @id @default(uuid()) @db.Uuid
+  number             String?     @unique @db.VarChar(64)
+  zoneId             String      @map("zone_id") @db.Uuid
+  predictionId       String?     @map("prediction_id") @db.Uuid
+  createdByUserId    String?     @map("created_by_user_id") @db.Uuid
+  level              AlertLevel
+  title              String      @db.VarChar(200)
+  message            String      @db.Text
+  status             AlertStatus @default(ACTIVE)
+  requiresValidation Boolean     @default(false) @map("requires_validation")
+  validatedByUserId  String?     @map("validated_by_user_id") @db.Uuid
+  validatedAt        DateTime?   @map("validated_at") @db.Timestamptz(3)
+  startsAt           DateTime    @default(now()) @map("starts_at") @db.Timestamptz(3)
+  endsAt             DateTime?   @map("ends_at") @db.Timestamptz(3)
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  zone       Zone        @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  prediction Prediction? @relation(fields: [predictionId], references: [id], onDelete: Restrict)
+
+  @@index([zoneId, status, startsAt])
+  @@index([level, status])
+  @@map("alerts")
+}

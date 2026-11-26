@@ -1,0 +1,238 @@
+Taches utilisateur - HydrO'Alerte CI
+
+Document de suivi des actions a realiser par Levi pour debloquer et faire avancer le backend.
+Derniere mise a jour : 25/11/2026
+
+Perimetre :
+- Ce document suit les actions qui necessitent une intervention de Levi ou une decision de l'equipe.
+- Le code backend, les tests et la mise a jour de cette checklist sont pris en charge dans le depot.
+- La roadmap complete du backend reste dans Roadmap_Backend_HydrOAlerte_CI.txt.
+- Ne jamais envoyer de mot de passe, URL de connexion complete, cle ou jeton dans le chat.
+
+
+Legende
+
+- [x] Termine et verifie.
+- [ ] A faire.
+- [?] A confirmer avec l'equipe ou a verifier.
+- [!] Bloque ; ne pas contourner sans decision.
+
+
+Etat actuel
+
+- [x] Le fichier local .env existe.
+- [x] Le fichier .env est ignore par Git.
+- [x] Docker Desktop et Docker Compose sont installes.
+- [x] Une configuration Docker locale PostGIS est disponible dans docker-compose.yml.
+- [x] Demarrer le conteneur PostgreSQL/PostGIS et confirmer qu'il est pret.
+- [x] La migration initiale est appliquee (25/11/2026) ; le schema Prisma est aligne sur la base.
+- [x] Le schema Prisma et la migration PostGIS initiale sont presents dans le projet.
+- [x] Les donnees fictives sont chargees (pnpm db:seed).
+- [x] L'API de consultation (zones, capteurs, mesures, alertes) et Swagger (/docs) sont disponibles.
+- [x] Tests unitaires, tests d'integration (base hydroalert_test) et controle TypeScript passent.
+
+
+1. PostgreSQL/PostGIS local avec Docker
+
+Objectif :
+- Fournir une base PostgreSQL locale de developpement avec PostGIS pour appliquer la migration initiale.
+
+Etat verifie le 25/11/2026 :
+
+- [x] Docker Compose a demarre le conteneur de base de donnees.
+- [x] Le premier demarrage a pris du temps et s'est termine par une recuperation PostgreSQL interrompue.
+- [x] Un redemarrage non destructif a permis a PostgreSQL de terminer la recuperation.
+- [x] Le conteneur est maintenant indique healthy par Docker Compose.
+- [x] PostgreSQL 16.4 repond sur le port local 5432.
+- [x] PostGIS 3.4 est actif dans la base hydroalert.
+- [x] La migration Prisma du projet est appliquee.
+
+Pourquoi Docker Desktop convient :
+
+- Docker Desktop lance PostgreSQL dans un conteneur, separement du backend.
+- L'image postgis/postgis fournit PostgreSQL 16 avec l'extension PostGIS necessaire au schema.
+- pgAdmin est facultatif : Docker Compose et la commande psql permettent de demarrer et verifier la base.
+- Le port est publie uniquement sur 127.0.0.1 ; la base n'est pas exposee aux autres machines du reseau.
+- Le volume postgres_data conserve les donnees lorsque le conteneur est arrete ou recree.
+- Le mot de passe par defaut du compose est hydroalert et convient uniquement au developpement local. Ne jamais reutiliser cette valeur en production.
+
+1.1 Demarrer Docker Desktop
+
+- Cette etape est terminee : Docker Desktop et son moteur sont disponibles.
+- Si Docker Desktop est arrete lors d'une prochaine session, le relancer avant de continuer.
+
+1.2 Demarrer le service PostgreSQL/PostGIS
+
+- Executer a la racine du projet :
+	* docker compose up -d db
+- La premiere execution peut telecharger l'image et prendre quelques minutes.
+- Verifier l'etat avec :
+	* docker compose ps
+- Attendre que le service db soit indique comme healthy.
+- Le premier demarrage a ici necessite un redemarrage : PostgreSQL avait ete interrompu durant son initialisation et a effectue une recuperation du volume.
+- Le redemarrage simple docker compose up -d db a conserve le volume et a permis a la recuperation de se terminer ; ne pas supprimer le volume.
+- En cas d'erreur indiquant que le port 5432 est occupe, ne pas supprimer de conteneur ni de volume ; signaler le message pour choisir un autre port de facon coherente.
+
+1.3 Verifier que le port local est accessible
+
+- Cette verification est terminee : Test-NetConnection retourne True et docker compose ps affiche healthy.
+- PostGIS a egalement ete verifie avec docker compose exec -T db psql -U hydroalert -d hydroalert -tAc "SELECT postgis_version();".
+
+1.4 Verifier la configuration locale sans partager les secrets
+
+- Le fichier .env actuel doit contenir DATABASE_URL pour la base locale hydroalert sur 127.0.0.1:5432, et TEST_DATABASE_URL pour la base hydroalert_test.
+- Utiliser 127.0.0.1 et non localhost : sous Windows, localhost resout d'abord en IPv6 (::1), alors que le port Docker n'est publie qu'en IPv4. Prisma renvoyait alors P1001.
+- La configuration .env.example correspond au compose local avec l'utilisateur hydroalert et la base hydroalert.
+- Ne pas coller le contenu du fichier .env dans le chat et ne pas le committer.
+- Si POSTGRES_PASSWORD est defini manuellement dans .env, il doit correspondre au mot de passe utilise dans DATABASE_URL.
+- Si .env contient des identifiants differents, ne pas les envoyer ; demander a l'assistant de verifier uniquement si la configuration est coherente.
+
+
+2. Migration, donnees fictives et tests (termine le 25/11/2026)
+
+Resultat :
+- [x] pnpm db:migrate:deploy a applique 20261124160000_initial_core ; pnpm db:migrate:status indique que la base est a jour.
+- [x] Les 5 tables, les 2 index GIST et les 7 contraintes CHECK sont presents.
+- [x] prisma migrate diff ne remonte aucun ecart et pnpm db:migrate:dev repond « Already in sync ».
+- [x] pnpm db:seed est idempotent (memes comptes apres plusieurs executions).
+- [x] pnpm test (7 tests), pnpm test:integration (13 tests) et tsc --noEmit passent.
+
+Commandes courantes :
+- pnpm dev : lance l'API (http://127.0.0.1:3000, documentation sur /docs).
+- pnpm db:seed : recharge les donnees fictives sans doublon.
+- pnpm test : tests sans base de donnees.
+- pnpm test:integration : migre et remplit hydroalert_test, puis lance les tests d'integration.
+- La base de test a ete creee une fois avec : docker compose exec db createdb -U hydroalert hydroalert_test
+- pnpm docs:api : genere docs/API_HydrOAlerte_CI_v<version>.docx, la documentation API a transmettre aux responsables web et mobile.
+	* Le document est produit a partir du code ; ne pas le modifier a la main.
+	* A chaque changement d'API : incrementer info.version dans src/plugins/swagger.ts, ajouter une ligne a VERSION_HISTORY dans scripts/export-api-docx.ts, regenerer, puis committer le nouveau .docx.
+	* Avec pnpm dev lance, la meme documentation est consultable sur http://127.0.0.1:3000/docs (interactive) et http://127.0.0.1:3000/docs/json (JSON brut).
+
+Rendre l'API accessible aux autres modules :
+
+- Les variables NODE_ENV, PORT, HOST, API_PUBLIC_URL et CORS_ORIGINS sont decrites dans .env.example. Absentes de .env, elles prennent leur valeur par defaut (port 3000, adresse http://127.0.0.1:3000, CORS ouvert a toutes les origines).
+- 127.0.0.1 designe toujours la machine elle-meme : cette adresse ne fonctionne pas depuis le PC ou le telephone d'un coequipier.
+- Test sur le meme Wi-Fi :
+	* Trouver l'IP locale du PC avec ipconfig (ligne « Adresse IPv4 », par exemple 192.168.1.25).
+	* Dans .env, mettre API_PUBLIC_URL=http://192.168.1.25:3000, puis relancer pnpm dev.
+	* Autoriser le port 3000 dans le pare-feu Windows, une seule fois, dans PowerShell en administrateur :
+		New-NetFirewallRule -DisplayName "HydroAlert API 3000" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow -Profile Private
+	* Le reseau Wi-Fi doit etre en profil « Prive » dans Windows.
+	* Les coequipiers utilisent alors http://192.168.1.25:3000. Le PC doit rester allume et l'API lancee.
+- Emulateur Android sur le meme PC que l'API : utiliser http://10.0.2.2:3000.
+- Sites web : le navigateur exige l'autorisation CORS. Ajouter l'origine du site dans CORS_ORIGINS (obligatoire en production, ou « * » n'est pas accepte par defaut). Les applications mobiles et les services IA ou IoT ne sont pas concernes.
+- Apres tout changement de API_PUBLIC_URL, relancer pnpm docs:api pour que le .docx affiche la bonne adresse.
+
+Rappel des regles et commandes de reference ci-dessous.
+
+Preconditions :
+- Etre dans C:\xampp\htdocs\hydroalert-ci.
+- Avoir Docker Desktop demarre et le conteneur db indique healthy par Docker Compose.
+- Avoir verifie localement DATABASE_URL sans la partager.
+- Le conteneur db Docker doit etre indique healthy et PostGIS doit repondre.
+- Ne jamais utiliser pnpm db:migrate:dev sur une base de production ou une base contenant des donnees a conserver.
+
+Commandes a executer dans PowerShell, une par une :
+
+- pnpm db:generate
+	* Genere le client Prisma a partir de prisma/schema.prisma.
+- pnpm db:migrate:dev
+	* Applique la migration initiale a la base de developpement.
+	* La migration active PostGIS et cree les tables du coeur : zones, sensors, measurements, predictions et alerts.
+- pnpm db:migrate:status
+	* Verifie que toutes les migrations du projet sont appliquees.
+- pnpm test
+	* Lance les tests automatises du backend.
+- pnpm exec tsc --noEmit
+	* Verifie les types TypeScript sans generer de fichiers.
+
+Verification complementaire sans pgAdmin :
+
+- Verifier que PostGIS est active :
+	* docker compose exec db psql -U hydroalert -d hydroalert -c "SELECT extname FROM pg_extension WHERE extname = 'postgis';"
+- Verifier la presence des tables du coeur :
+	* docker compose exec db psql -U hydroalert -d hydroalert -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('zones', 'sensors', 'measurements', 'predictions', 'alerts') ORDER BY table_name;"
+- Les deux requetes doivent retourner PostGIS et les cinq tables attendues.
+- Avant la migration, la premiere requete doit retourner PostGIS ; les tables apparaitront apres pnpm db:migrate:dev.
+
+Arreter PostgreSQL lorsque le projet n'en a plus besoin :
+
+- Executer docker compose stop db.
+- Pour le redemarrer, executer docker compose start db.
+- Ne pas executer docker compose down -v : l'option -v supprime le volume et les donnees de la base.
+
+Si une commande echoue :
+
+- P1001 ou connexion refusee : verifier Docker Desktop, docker compose ps, l'hote et le port PostgreSQL.
+- P1000 ou authentification refusee : verifier localement le nom d'utilisateur et le mot de passe dans .env.
+- Erreur de permission PostGIS : copier uniquement le message d'erreur, sans URL ni identifiants, et demander de l'aide avant toute commande SQL manuelle.
+- Erreur indiquant que la base n'est pas vide ou contient un schema inconnu : arreter et ne pas supprimer ni reinitialiser la base.
+
+Compte rendu a envoyer apres l'action :
+
+- Dire si le serveur PostgreSQL est joignable.
+- Dire si Docker Compose indique le conteneur db comme healthy.
+- Indiquer si pnpm db:migrate:dev a reussi.
+- Copier les messages d'erreur eventuels apres avoir retire tout secret.
+- Ne jamais envoyer DATABASE_URL, le mot de passe, le contenu de .env ou une capture qui les montre.
+
+
+3. Informations a obtenir de l'equipe
+
+3.1 Avec Daniel - contrat des capteurs
+
+- [ ] Liste des topics MQTT et leur convention de nommage.
+- [ ] Exemple de payload JSON sans identifiants secrets.
+- [ ] Champs transmis : codeCapteur, horodatage, niveau d'eau, pluie, debit et batterie selon le materiel.
+- [ ] Unite et precision de chaque mesure, en particulier le debit.
+- [ ] Frequence d'envoi et comportement en cas de perte de connexion.
+- [ ] Methode d'authentification des capteurs et regle d'idempotence.
+
+3.2 Avec la personne responsable du service IA
+
+- [ ] Adresse et methode d'appel du service.
+- [ ] Schema d'entree et exemple de reponse.
+- [ ] Signification et intervalle des scores, probabilites et horizons.
+- [ ] Delai maximum de reponse et comportement en cas d'indisponibilite.
+- [ ] Methode d'authentification, si necessaire.
+
+3.3 Avec l'equipe projet
+
+- [ ] Polygone exact de Riviera 9 Kilos et systeme de coordonnees utilise.
+- [ ] Coordonnees des capteurs et association de chaque capteur a une zone.
+- [ ] Niveaux d'alerte qui necessitent une validation avant diffusion.
+- [ ] Roles backend et actions autorisees pour chaque role.
+- [ ] Fonctions obligatoires du prototype et fonctions simulees ou reportees.
+- [ ] Confirmation ou modification de la correspondance de presentation proposee : vert, orange, rouge, rouge.
+
+3.4 Avec les responsables web et mobile
+
+- [ ] Donnees et filtres requis pour les zones, capteurs, mesures et alertes.
+- [ ] Exemples de requetes et reponses attendus par les clients.
+- [ ] Besoin de mise a jour en temps reel ou rafraichissement periodique suffisant.
+- [ ] Besoins d'authentification et de notifications du prototype.
+
+
+4. Actions ulterieures a faire avec l'assistant
+
+- [x] Confirmer que la migration est appliquee ; mettre a jour ce fichier et la roadmap.
+- [x] Implementer les premieres routes de consultation des zones, capteurs, mesures et alertes.
+- [x] Ajouter les donnees de test sans secret et les tests d'integration PostgreSQL/PostGIS.
+- [x] Rendre l'adresse publique de l'API configurable (API_PUBLIC_URL) et ajouter CORS.
+- [ ] Heberger le backend en ligne : suivre docs/Deploiement_HydrOAlerte_CI.txt (Neon pour la base, Render pour l'API).
+	* Creer les comptes Neon et Render, la base Neon, puis le Blueprint Render.
+	* Ne jamais envoyer la chaine de connexion Neon dans le chat.
+- [ ] Envoyer docs/API_HydrOAlerte_CI_v<derniere version>.docx a Arielle, Soro et Ange, avec l'adresse hebergee, pour valider les formats de reponse et les filtres.
+- [ ] Demander a Arielle l'adresse (origine) de son site en developpement, par exemple http://localhost:5173, pour l'ajouter a CORS_ORIGINS.
+- [ ] Integrer les geometries de Riviera 9 Kilos apres reception des coordonnees officielles.
+- [ ] Implementer la reception des mesures selon le contrat MQTT valide.
+- [ ] Implementer les regles de risque et la creation d'alertes selon les decisions de l'equipe.
+
+
+5. Mise a jour de ce document
+
+- Cette checklist est le point de suivi des actions que Levi doit effectuer ou faire confirmer.
+- Quand une action est terminee, indiquer son numero et le resultat, sans envoyer de secret.
+- Les cases ne seront cochees qu'apres confirmation de Levi ou verification non sensible dans le depot.
+- A chaque nouvelle etape, les taches terminees seront marquees, les blocages expliques et les prochaines actions ajoutees.
+- Les choix deja fixes dans les documents du projet ne seront pas redemandes ; seules les confirmations encore necessaires seront suivies ici.
