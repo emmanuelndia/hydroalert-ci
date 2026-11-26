@@ -219,9 +219,40 @@ Compte rendu a envoyer apres l'action :
 - [x] Implementer les premieres routes de consultation des zones, capteurs, mesures et alertes.
 - [x] Ajouter les donnees de test sans secret et les tests d'integration PostgreSQL/PostGIS.
 - [x] Rendre l'adresse publique de l'API configurable (API_PUBLIC_URL) et ajouter CORS.
-- [ ] Heberger le backend en ligne : suivre docs/Deploiement_HydrOAlerte_CI.txt (Neon pour la base, Render pour l'API).
-	* Creer les comptes Neon et Render, la base Neon, puis le Blueprint Render.
-	* Ne jamais envoyer la chaine de connexion Neon dans le chat.
+- [x] Heberger le backend en ligne (26/11/2026) : Neon pour la base PostGIS, Render pour l'API.
+	* Adresse publique : https://hydroalert-api.onrender.com (Swagger sur /docs).
+	* Verifie : /health renvoie database ok, /zones renvoie la zone fictive, Swagger declare l'adresse publique.
+	* Guide de reference : docs/Deploiement_HydrOAlerte_CI.txt.
+- [x] Generer docs/API_HydrOAlerte_CI_v0.1.1.docx avec l'adresse publique.
+- [x] Chaine mesure -> prediction -> alerte cote serveur, avec simulateur (26/11/2026). Documentation API v0.2.0.
+- [ ] Faire valider par l'equipe les regles provisoires (Regles_Metier, section 17) :
+	* formule de risque et niveau critique de 100 cm, ou remplacement par le service IA ;
+	* niveaux d'alerte necessitant une validation avant diffusion (ALERT_VALIDATION_LEVELS) ;
+	* politique d'escalade et de desescalade des alertes.
+
+Cartographie (lot 6, 26/11/2026) :
+- [x] Zones et capteurs en GeoJSON, recherche par point et par rayon. Documentation API v0.3.0.
+- [ ] Obtenir le polygone officiel de Riviera 9 Kilos, puis l'importer :
+	* Si aucun fichier n'est fourni : dessiner le contour sur https://geojson.io, puis Save > GeoJSON.
+	* Enregistrer le fichier dans docs/zones/riviera-9-kilos.geojson.
+	* Verifier sans rien enregistrer :
+		pnpm zone:import --file docs/zones/riviera-9-kilos.geojson --name "Riviera 9 Kilos" --dry-run
+	* Importer en local (meme nom : la geometrie fictive est remplacee et les capteurs sont rattaches) :
+		pnpm zone:import --file docs/zones/riviera-9-kilos.geojson --name "Riviera 9 Kilos"
+	* Pour Neon : procedure Read-Host du guide de deploiement, puis la meme commande avec --remote.
+- [ ] Obtenir les coordonnees reelles des capteurs (Daniel) pour remplacer les positions fictives.
+
+Simulateur de capteurs :
+- pnpm simulate --sensor CAP-COC-01 --from 30 --to 110 --steps 8 --interval 2
+- pnpm simulate --sensor CAP-COC-03 --rain --from 0 --to 20 --steps 5
+- Le simulateur ecrit dans la base designee par DATABASE_URL et affiche la base cible au demarrage.
+  Il refuse d'ecrire sur une base distante sans l'option --remote (meme protection pour pnpm zone:import).
+  Pour la base Neon, utiliser uniquement la procedure Read-Host du guide de deploiement, sans modifier .env.
+
+Regle sur le fichier .env :
+- DATABASE_URL doit rester sur la base locale. Ne pas y mettre la chaine Neon : toutes les commandes locales
+  (migrations, seed, simulateur) viseraient alors la base de production.
+- Les commentaires dans .env commencent par #, pas par //. Ne pas garder de chaine de connexion en commentaire.
 - [ ] Envoyer docs/API_HydrOAlerte_CI_v<derniere version>.docx a Arielle, Soro et Ange, avec l'adresse hebergee, pour valider les formats de reponse et les filtres.
 - [ ] Demander a Arielle l'adresse (origine) de son site en developpement, par exemple http://localhost:5173, pour l'ajouter a CORS_ORIGINS.
 - [ ] Integrer les geometries de Riviera 9 Kilos apres reception des coordonnees officielles.

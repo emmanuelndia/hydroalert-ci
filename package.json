@@ -15,7 +15,9 @@
     "docs:api": "tsx scripts/export-api-docx.ts",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
-    "start:render": "prisma migrate deploy && node dist/server.js"
+    "start:render": "prisma migrate deploy && node dist/server.js",
+    "simulate": "tsx scripts/simulate-sensors.ts",
+    "zone:import": "tsx scripts/import-zone.ts"
   },
   "keywords": [],
   "author": "",

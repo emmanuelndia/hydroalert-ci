@@ -23,7 +23,8 @@ const env = { ...process.env, DATABASE_URL: testUrl };
 const steps = [
   "pnpm exec prisma migrate deploy",
   "pnpm exec prisma db seed",
-  'pnpm exec tsx --test "tests/integration/**/*.test.ts"',
+  // Un fichier a la fois : les tests partagent la meme base.
+  'pnpm exec tsx --test --test-concurrency=1 "tests/integration/**/*.test.ts"',
 ];
 
 for (const command of steps) {

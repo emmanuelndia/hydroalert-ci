@@ -41,6 +41,18 @@ const VERSION_HISTORY = [
     changes:
       "Adresse publique configurable (API_PUBLIC_URL) et autorisation CORS pour les applications web. Schemas de reponse des routes de sante. Aucun changement de format sur les autres routes.",
   },
+  {
+    version: "0.2.0",
+    date: "26/11/2026",
+    changes:
+      "Nouvelle route GET /predictions (historique des evaluations du risque, avec couleur d'affichage). Les alertes peuvent desormais etre creees et escaladees automatiquement par le backend a partir des mesures (regle provisoire). Aucun changement de format sur les routes existantes.",
+  },
+  {
+    version: "0.3.0",
+    date: "26/11/2026",
+    changes:
+      "Cartographie : GET /zones/geojson et GET /sensors/geojson (FeatureCollection GeoJSON pour la carte), GET /zones/locate (zones contenant un point) et GET /sensors/nearby (capteurs dans un rayon en metres). Aucun changement de format sur les routes existantes.",
+  },
 ];
 
 /** Adresse de l'API, lue dans servers[0].url de la specification (variable API_PUBLIC_URL). */
@@ -86,6 +98,32 @@ const FIELD_DESCRIPTIONS: Record<string, string> = {
   startsAt: "Date de debut",
   endsAt: "Date de fin",
   data: "Liste des elements de la page",
+  riskScore: "Score de risque de 0 a 100",
+  riskLevel: "Niveau de risque (seuils : NORMAL 0-39, VIGILANCE 40-64, DANGER 65-84, EVACUATION 85-100)",
+  displayColor: "Couleur d'affichage proposee pour le niveau",
+  probability: "Probabilite fournie par le modele IA (0 a 1), sinon null",
+  horizonHours: "Horizon de la prediction en heures, sinon null",
+  origin: "Origine du calcul : REGLE, IA ou SIMULATION",
+  modelVersion: "Version du modele ou de la regle utilisee",
+  predictedAt: "Date du calcul",
+  features: "Liste des entites GeoJSON (une par zone ou par capteur)",
+  "features[].type": "Toujours Feature",
+  "features[].id": "Identifiant de la zone ou du capteur",
+  "features[].geometry": "Geometrie GeoJSON : MultiPolygon pour une zone, Point pour un capteur",
+  "features[].geometry.type": "Type de geometrie GeoJSON",
+  "features[].geometry.coordinates": "Coordonnees GeoJSON, ordre [longitude, latitude]",
+  "features[].properties": "Attributs de l'entite, a afficher sur la carte",
+  "features[].properties.type": "Type de capteur",
+  "features[].properties.status": "Statut du capteur",
+  activeAlert: "Alerte publiee (ACTIVE) de la zone, sinon null",
+  "activeAlert.level": "Niveau de l'alerte publiee",
+  lastMeasurement: "Derniere mesure du capteur, sinon null",
+  zones: "Zones actives qui contiennent le point",
+  sensors: "Capteurs trouves, du plus proche au plus eloigne",
+  radiusM: "Rayon de recherche en metres (1 a 10 000, defaut 500)",
+  distanceM: "Distance au point en metres",
+  "sensors[].type": "Type de capteur",
+  "sensors[].status": "Statut du capteur",
   "pagination.page": "Page renvoyee",
   "pagination.pageSize": "Taille de page appliquee",
   "pagination.total": "Nombre total d'elements correspondant aux filtres",

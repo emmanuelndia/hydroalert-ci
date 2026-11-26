@@ -198,6 +198,7 @@ Perimetre :
 - Un jeu de donnees fictives (pnpm db:seed) cree la zone Riviera 9 Kilos avec un polygone approximatif, 3 capteurs, 72 mesures, 2 predictions et 1 alerte.
 - L'API de consultation est disponible : zones, capteurs, mesures et alertes, avec validation Zod, pagination, filtres, format d'erreur unique et documentation Swagger sur /docs.
 - Tests unitaires (pnpm test) et d'integration sur une base de test dediee (pnpm test:integration) ; tous passent, ainsi que le controle TypeScript.
+- L'API est hebergee en ligne depuis le 26/11/2026 : https://hydroalert-api.onrender.com (Render), avec la base PostgreSQL/PostGIS chez Neon. La documentation Word de l'API (docs/API_HydrOAlerte_CI_v0.1.1.docx) indique cette adresse.
 - L'authentification, la reception MQTT, les integrations IA, les regles d'alerte et les notifications restent a implementer.
 
 

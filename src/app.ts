@@ -10,7 +10,9 @@ import { errorsPlugin } from "./plugins/errors.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { swaggerPlugin } from "./plugins/swagger.js";
 import { alertRoutes } from "./routes/alerts.js";
+import { geoRoutes } from "./routes/geo.js";
 import { healthRoutes } from "./routes/health.js";
+import { predictionRoutes } from "./routes/predictions.js";
 import { sensorRoutes } from "./routes/sensors.js";
 import { zoneRoutes } from "./routes/zones.js";
 
@@ -40,6 +42,8 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.register(zoneRoutes);
   app.register(sensorRoutes);
   app.register(alertRoutes);
+  app.register(predictionRoutes);
+  app.register(geoRoutes);
 
   return app;
 }
